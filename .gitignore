@@ -3,6 +3,6 @@ cache
 artifacts
 typechain
 .env
-
+deployments
 
 
