@@ -14,8 +14,6 @@ import { HardhatUserConfig, HttpNetworkAccountsUserConfig } from 'hardhat/types'
 import { EndpointId } from '@layerzerolabs/lz-definitions'
 
 import './tasks/sendString'
-import './tasks/setRoute'
-import './tasks/getRoute'
 import './tasks/depositToken'
 import './tasks/requestPayoutToken'
 import './tasks/approveToken'

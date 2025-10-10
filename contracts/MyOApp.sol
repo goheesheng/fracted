@@ -24,11 +24,6 @@ contract MyOApp is OApp, OAppOptionsType3 {
     /// @notice Message tag for token payout messages
     uint8 public constant TAG_TOKEN_PAYOUT = 101;
 
-    /// @notice Route registry: for a given destination chain and source token, which destination token to pay
-    mapping(uint32 => mapping(address => address)) public dstTokenByDstEidAndSrcToken;
-
-    // Native payout removed: this OApp does not support receiving or sending user ETH
-
     /// @dev Emitted when a token payout is requested cross-chain
     event TokenPayoutRequested(
         uint32 indexed dstEid,
@@ -87,17 +82,6 @@ contract MyOApp is OApp, OAppOptionsType3 {
     // ──────────────────────────────────────────────────────────────────────────────
     // Admin token routes and liquidity for tokens
     // ──────────────────────────────────────────────────────────────────────────────
-
-    /// @notice Set token route for a destination chain: srcToken (local) => dstToken (on destination chain)
-    function setTokenRoute(uint32 _dstEid, address _srcToken, address _dstToken) external onlyOwner {
-        require(_srcToken != address(0) && _dstToken != address(0), "token=0");
-        dstTokenByDstEidAndSrcToken[_dstEid][_srcToken] = _dstToken;
-    }
-
-    /// @notice Remove token route for a destination chain
-    function removeTokenRoute(uint32 _dstEid, address _srcToken) external onlyOwner {
-        delete dstTokenByDstEidAndSrcToken[_dstEid][_srcToken];
-    }
 
     /// @notice Owner deposits tokens into the contract as liquidity
     function ownerDepositToken(address _token, uint256 _amount) external onlyOwner {
@@ -166,17 +150,16 @@ contract MyOApp is OApp, OAppOptionsType3 {
      */
     function quotePayoutToken(
         uint32 _dstEid,
-        address _srcToken,
+        address _dstToken,
         address _merchant,
         uint256 _amount,
         bytes calldata _options,
         bool _payInLzToken
     ) public view returns (MessagingFee memory fee) {
-        address dstToken = dstTokenByDstEidAndSrcToken[_dstEid][_srcToken];
-        require(dstToken != address(0), "route missing");
+        require(_dstToken != address(0), "dst token=0");
         (uint256 netAmount, ) = _netOfFee(_amount);
         // Encode destination token for the receiver to use
-        bytes memory _message = abi.encode(TAG_TOKEN_PAYOUT, dstToken, _merchant, netAmount);
+        bytes memory _message = abi.encode(TAG_TOKEN_PAYOUT, _dstToken, _merchant, netAmount);
         fee = _quote(_dstEid, _message, combineOptions(_dstEid, PAYOUT, _options), _payInLzToken);
     }
 
@@ -187,23 +170,22 @@ contract MyOApp is OApp, OAppOptionsType3 {
     function requestPayoutToken(
         uint32 _dstEid,
         address _srcToken,
+        address _dstToken,
         address _merchant,
         uint256 _amount,
         bytes calldata _options
     ) external payable {
         require(_srcToken != address(0), "src token=0");
+        require(_dstToken != address(0), "dst token=0");
         require(_merchant != address(0), "merchant=0");
         require(_amount > 0, "amount=0");
-
-        address dstToken = dstTokenByDstEidAndSrcToken[_dstEid][_srcToken];
-        require(dstToken != address(0), "route missing");
 
         // Pull source token from user on this chain
         IERC20(_srcToken).safeTransferFrom(msg.sender, address(this), _amount);
 
         (uint256 netAmount, uint256 feeAmount) = _netOfFee(_amount);
         // Encode destination token explicitly for the receiver
-        bytes memory _message = abi.encode(TAG_TOKEN_PAYOUT, dstToken, _merchant, netAmount);
+        bytes memory _message = abi.encode(TAG_TOKEN_PAYOUT, _dstToken, _merchant, netAmount);
 
         // Quote and enforce native messaging fee
         MessagingFee memory fee = _quote(_dstEid, _message, combineOptions(_dstEid, PAYOUT, _options), false);
@@ -229,7 +211,7 @@ contract MyOApp is OApp, OAppOptionsType3 {
             msg.sender,
             _merchant,
             _srcToken,
-            dstToken,
+            _dstToken,
             _amount,
             netAmount,
             feeAmount

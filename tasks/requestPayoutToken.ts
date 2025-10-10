@@ -10,6 +10,7 @@ task(
 )
     .addParam('dstEid', 'Destination endpoint ID', undefined, types.int)
     .addParam('srcToken', 'Source chain token address to pull from caller', undefined, types.string)
+    .addParam('dstToken', 'Destination chain token address to pay to merchant', undefined, types.string)
     .addParam('merchant', 'Destination chain merchant address to receive payout', undefined, types.string)
     .addParam(
         'amount',
@@ -24,6 +25,7 @@ task(
             args: {
                 dstEid: number
                 srcToken: string
+                dstToken: string
                 merchant: string
                 amount: string
                 options?: string
@@ -39,6 +41,7 @@ task(
             console.log(`MyOApp:   ${deployment.address}`)
             console.log(`Signer:   ${signer.address}`)
             console.log(`SrcToken: ${args.srcToken}`)
+            console.log(`DstToken: ${args.dstToken}`)
             console.log(`Merchant: ${args.merchant}`)
             console.log(`Amount:   ${args.amount}`)
 
@@ -54,7 +57,7 @@ task(
             console.log('Quoting LayerZero message fee...')
             const fee = await myOApp.quotePayoutToken(
                 args.dstEid,
-                args.srcToken,
+                args.dstToken,
                 args.merchant,
                 args.amount,
                 optionsHex,
@@ -67,6 +70,7 @@ task(
             const tx: ContractTransaction = await myOApp.requestPayoutToken(
                 args.dstEid,
                 args.srcToken,
+                args.dstToken,
                 args.merchant,
                 args.amount,
                 optionsHex,
