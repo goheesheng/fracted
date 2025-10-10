@@ -1,392 +1,390 @@
-# Stargate Cross-Chain Bridge Contracts
+# Fracted - Cross-Chain Payment System
 
-This project contains three Solidity smart contracts for bridging USDC from Sepolia to Optimism Sepolia using Stargate Finance (LayerZero V2):
+A decentralized cross-chain payment platform built on LayerZero V2 that enables seamless token transfers between Base Sepolia and Arbitrum Sepolia testnets with a 3% platform fee.
 
-1. **StargateBridgeWithFee** - Bridge with 3% fee + swap USDC to ETH on Optimism
-2. **SimpleBridge** - Simple bridge with no fees
-3. **SimpleBridgeWithFee** - Bridge with 0.03% fee (no swap)
+## 🌟 Overview
 
----
+Fracted is a cross-chain payment system that allows users to:
+- Send tokens from one chain (e.g., USDT on Base Sepolia)
+- Receive different tokens on another chain (e.g., USDC on Arbitrum Sepolia)
+- Pay merchants across different blockchains with minimal friction
+- Generate payment links for easy integration
 
 ## 📋 Table of Contents
 
+- [Architecture](#architecture)
+- [Features](#features)
 - [Prerequisites](#prerequisites)
 - [Installation](#installation)
 - [Configuration](#configuration)
-- [Contract Overview](#contract-overview)
+- [Smart Contracts](#smart-contracts)
+- [Payment API](#payment-api)
 - [Deployment](#deployment)
-- [Testing](#testing)
+- [Usage](#usage)
+- [Demo Website](#demo-website)
 - [Contract Addresses](#contract-addresses)
-- [How It Works](#how-it-works)
+- [Development](#development)
+- [Security](#security)
+- [License](#license)
 
----
-
-## Prerequisites
-
-- Node.js v18+ and npm
-- Sepolia testnet ETH (for gas)
-- USDC on Sepolia testnet ([Faucet](https://faucet.circle.com/))
-- Private key with funds on both Sepolia and Optimism Sepolia
-
----
-
-## Installation
-
-```bash
-npm install
-```
-
----
-
-## Configuration
-
-Create a `.env` file in the project root:
-
-```env
-# RPC URLs
-SEPOLIA_RPC_URL=https://sepolia.infura.io/v3/YOUR_INFURA_KEY
-OPTIMISM_SEPOLIA_RPC_URL=https://optimism-sepolia.infura.io/v3/YOUR_INFURA_KEY
-
-# Private Key
-DEPLOYER_PRIVATE_KEY=your_private_key_here
-
-# Sepolia addresses
-USDC_SEPOLIA=0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590
-STARGATE_POOL_USDC_SEPOLIA=0x4985b8fcEA3659FD801a5b857dA1D00e985863F0
-
-# Optimism Sepolia addresses
-OPTIMISM_UNISWAP_ROUTER=0x851116d9223fabed8e56c0e6b8ad0c31d98b3507
-STARGATE_ENDPOINT_OPTIMISM=0x6EDCE65403992e310A62460808c4b910D972f10f
-COMPOSER_OPTIMISM_ADDRESS=0x6D4B828F526b9f4BF60C2230AD915dc4d6e196e7
-OPTIMISTIC_RECIPIENT=0xCFB86C607B09150042C584Ee23308413aB4Dff39
-
-# Deployed contracts (will be updated after deployment)
-SIMPLE_BRIDGE_SEPOLIA=0x6e78a726050299Ca99f9031d4d887463eC0fAF61
-SIMPLE_BRIDGE_WITH_FEE_SEPOLIA=0x45bdfF18693d79c592A36d7273Ce4F06f140DC61
-```
-
----
-
-## Contract Overview
-
-### 1. StargateBridgeWithFee
-
-**Purpose:** Bridge USDC with 3% fee, swap to ETH on Optimism, send to recipient
-
-**Features:**
-- Takes 3% fee on bridged amount
-- Bridges remaining 97% via Stargate
-- Automatically swaps USDC → WETH → ETH on Optimism using Uniswap V3
-- Sends native ETH to recipient
-- Owner can withdraw accumulated fees
-
-**Deployed:**
-- Sepolia: `0xa3204D24ff21DB7cBDCf932D1592e8D27E9E838A`
-- Optimism Sepolia (Receiver): `0x6D4B828F526b9f4BF60C2230AD915dc4d6e196e7`
-
----
-
-### 2. SimpleBridge
-
-**Purpose:** Simple USDC bridge with no fees or swaps
-
-**Features:**
-- No fees
-- Direct bridge from Sepolia → Optimism Sepolia
-- Recipient receives exact amount (minus LayerZero gas)
-- No swaps or conversions
-
-**Deployed:**
-- Sepolia: `0x6e78a726050299Ca99f9031d4d887463eC0fAF61`
-
----
-
-### 3. SimpleBridgeWithFee
-
-**Purpose:** Bridge USDC with minimal 0.03% protocol fee
-
-**Features:**
-- Takes 0.03% fee (3 basis points)
-- Bridges remaining 99.97% via Stargate
-- Fees accumulate in contract
-- Anyone can call `withdrawFees()` to send fees to treasury
-- No swaps - recipient receives USDC on Optimism
-
-**Deployed:**
-- Sepolia: `0x45bdfF18693d79c592A36d7273Ce4F06f140DC61`
-
----
-
-## Deployment
-
-### Deploy All Contracts
-
-```bash
-# 1. Compile contracts
-npm run build
-
-# 2. Deploy receiver on Optimism Sepolia (for StargateBridgeWithFee)
-node ./scripts/deploy-optimism-raw.mjs
-
-# 3. Update COMPOSER_OPTIMISM_ADDRESS in .env with deployed address
-
-# 4. Deploy StargateBridgeWithFee on Sepolia
-node ./scripts/deploy-sepolia-raw.mjs
-
-# 5. Deploy SimpleBridge on Sepolia
-node ./scripts/deploy-simple-bridge.mjs
-
-# 6. Deploy SimpleBridgeWithFee on Sepolia
-node ./scripts/deploy-simple-bridge-with-fee.mjs
-```
-
----
-
-## Testing
-
-### Test StargateBridgeWithFee (3% fee + swap to ETH)
-
-```bash
-# Bridge 10 USDC, swap to ETH on Optimism
-node ./scripts/test-bridge.mjs
-```
-
-**What happens:**
-1. Takes 3% fee (0.3 USDC) → stays in contract
-2. Bridges 9.7 USDC to Optimism
-3. Swaps 9.7 USDC → WETH on Uniswap V3
-4. Unwraps WETH → native ETH
-5. Sends ETH to recipient address
-
----
-
-### Test SimpleBridge (no fees)
-
-```bash
-# Bridge 10 USDC with no fees
-node ./scripts/test-simple-bridge.mjs
-```
-
-**What happens:**
-1. No fees taken
-2. Bridges full 10 USDC to Optimism
-3. Recipient receives 10 USDC (minus LayerZero gas)
-
----
-
-### Test SimpleBridgeWithFee (0.03% fee)
-
-```bash
-# Bridge 10 USDC with 0.03% fee
-node ./scripts/test-simple-bridge-with-fee.mjs
-```
-
-**What happens:**
-1. Takes 0.03% fee (0.003 USDC) → accumulated in contract
-2. Bridges 9.997 USDC to Optimism
-3. Recipient receives 9.997 USDC
-
-**Withdraw accumulated fees to treasury:**
-```javascript
-// Anyone can call this to send fees to treasury
-await simpleBridgeWithFee.withdrawFees();
-```
-
----
-
-## Contract Addresses
-
-### Sepolia Testnet
-
-| Contract | Address | Purpose |
-|----------|---------|---------|
-| USDC | `0x2F6F07CDcf3588944Bf4C42aC74ff24bF56e7590` | USDC token |
-| Stargate Pool | `0x4985b8fcEA3659FD801a5b857dA1D00e985863F0` | Stargate USDC pool |
-| StargateBridgeWithFee | `0xa3204D24ff21DB7cBDCf932D1592e8D27E9E838A` | 3% fee + swap |
-| SimpleBridge | `0x6e78a726050299Ca99f9031d4d887463eC0fAF61` | No fees |
-| SimpleBridgeWithFee | `0x45bdfF18693d79c592A36d7273Ce4F06f140DC61` | 0.03% fee |
-
-### Optimism Sepolia Testnet
-
-| Contract | Address | Purpose |
-|----------|---------|---------|
-| SwapReceiverOptimism | `0x6D4B828F526b9f4BF60C2230AD915dc4d6e196e7` | Receives & swaps to ETH |
-| WETH | `0x4200000000000000000000000000000000000006` | Canonical WETH |
-| USDC/WETH Pool | `0x86e63F9f307891438AdcFcd6FEa865338080848F` | Uniswap V3 pool |
-
----
-
-## How It Works
-
-### Architecture Overview
+## 🏗️ Architecture
 
 ```
 ┌─────────────────────────────────────────────────────────────────┐
-│                         SEPOLIA TESTNET                         │
+│                        BASE SEPOLIA                             │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  User → [StargateBridgeWithFee] → Stargate → LayerZero        │
+│  User → [MyOApp] → LayerZero V2 → Cross-Chain Message         │
 │           ↓ 3% fee                                              │
-│           ↓ 97% bridged                                         │
-│                                                                 │
-│  User → [SimpleBridge] → Stargate → LayerZero                  │
-│           ↓ No fees                                             │
-│           ↓ 100% bridged                                        │
-│                                                                 │
-│  User → [SimpleBridgeWithFee] → Stargate → LayerZero          │
-│           ↓ 0.03% fee                                           │
-│           ↓ 99.97% bridged                                      │
+│           ↓ 97% to merchant                                     │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
                               ↓
                       LayerZero Bridge
                               ↓
 ┌─────────────────────────────────────────────────────────────────┐
-│                    OPTIMISM SEPOLIA TESTNET                     │
+│                      ARBITRUM SEPOLIA                           │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                 │
-│  [SwapReceiverOptimism] → Uniswap V3 → WETH → ETH             │
-│           ↓ receives USDC                                       │
-│           ↓ swaps to WETH                                       │
-│           ↓ unwraps to ETH                                      │
-│           ↓ sends to recipient                                  │
-│                                                                 │
-│  Recipient receives USDC (SimpleBridge)                         │
-│  Recipient receives USDC (SimpleBridgeWithFee)                  │
+│  [MyOApp] → Receives Message → Pays Merchant in USDC          │
+│           ↓ processes payout                                    │
+│           ↓ transfers tokens                                    │
 │                                                                 │
 └─────────────────────────────────────────────────────────────────┘
 ```
 
-### Gas & Fee Breakdown
+## ✨ Features
 
-**StargateBridgeWithFee:**
-- Protocol fee: 3% (kept in contract on Sepolia)
-- LayerZero gas: ~0.00001 ETH (paid by user)
-- Recipient receives: Native ETH on Optimism
+### Core Functionality
+- **Cross-Chain Token Payouts**: Send tokens on one chain, receive different tokens on another
+- **Platform Fee**: 3% fee on all transactions (configurable)
+- **Multi-Token Support**: USDT, USDC, and custom tokens
+- **Merchant Payments**: Direct payments to merchant addresses
+- **Payment Links**: Generate shareable payment links
 
-**SimpleBridge:**
-- Protocol fee: 0%
-- LayerZero gas: ~0.000007 ETH (paid by user)
-- Recipient receives: USDC on Optimism
+### Technical Features
+- **LayerZero V2**: Latest cross-chain messaging protocol
+- **Gas Optimization**: Efficient cross-chain message handling
+- **Liquidity Management**: Contract-based liquidity pools
+- **Admin Controls**: Owner-managed token deposits and withdrawals
+- **Event Logging**: Comprehensive transaction tracking
 
-**SimpleBridgeWithFee:**
-- Protocol fee: 0.03% (accumulated in contract, sent to treasury)
-- LayerZero gas: ~0.000007 ETH (paid by user)
-- Recipient receives: USDC on Optimism
+## 🔧 Prerequisites
 
----
+- Node.js v18+ and npm/pnpm
+- Base Sepolia testnet ETH (for gas)
+- Arbitrum Sepolia testnet ETH (for gas)
+- Test tokens (USDT/USDC) on both networks
+- Private key with funds on both chains
 
-## Bridge Timing
+## 📦 Installation
 
-Cross-chain bridging via LayerZero typically takes **1-5 minutes**.
+```bash
+# Clone the repository
+git clone <repository-url>
+cd fracted
 
-Monitor transactions:
-- Sepolia: https://sepolia.etherscan.io
-- Optimism Sepolia: https://sepolia-optimism.etherscan.io
-- LayerZero Scan: https://testnet.layerzeroscan.com
+# Install contract dependencies
+cd contract
+pnpm install
 
----
-
-## Withdraw Fees
-
-### StargateBridgeWithFee (3% fee)
-
-```javascript
-// Only owner can withdraw
-await stargateBridgeWithFee.withdrawFees();
-// Sends accumulated USDC fees to owner
+# Install payment API dependencies
+cd ../paymentapi
+npm install
 ```
 
-### SimpleBridgeWithFee (0.03% fee)
+## ⚙️ Configuration
 
-```javascript
-// Anyone can call to send fees to treasury
-await simpleBridgeWithFee.withdrawFees();
-// Sends accumulated USDC fees to treasury address
+### Contract Configuration
+
+Create a `.env` file in the `contract/` directory:
+
+```env
+# RPC URLs
+BASE_SEPOLIA_RPC_URL=https://sepolia.base.org
+ARBITRUM_SEPOLIA_RPC_URL=https://sepolia-rollup.arbitrum.io/rpc
+
+# Private Key
+DEPLOYER_PRIVATE_KEY=your_private_key_here
+
+# LayerZero Endpoints
+LAYERZERO_ENDPOINT_BASE_SEPOLIA=0x6EDCE65403992e310A62460808c4b910D972f10f
+LAYERZERO_ENDPOINT_ARBITRUM_SEPOLIA=0x6EDCE65403992e310A62460808c4b910D972f10f
+
+# Token Addresses
+USDT_BASE_SEPOLIA=0x323e78f944A9a1FcF3a10efcC5319DBb0bB6e673
+USDC_BASE_SEPOLIA=0x036CbD53842c5426634e7929541eC2318f3dCF7e
+USDT_ARBITRUM_SEPOLIA=0x30fA2FbE15c1EaDfbEF28C188b7B8dbd3c1Ff2eB
+USDC_ARBITRUM_SEPOLIA=0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d
 ```
 
----
+### Payment API Configuration
 
-## Security Notes
+Create a `.env` file in the `paymentapi/` directory:
 
-⚠️ **Important:**
-- Never commit your `.env` file or private keys
-- Test with small amounts first
-- Ensure sufficient ETH for gas on both chains
-- Verify contract addresses before use
-- LayerZero bridging is non-reversible
+```env
+# Contract Addresses
+OAPP_base_sepolia=0x5C5254f25C24eC1dFb612067AB6CbD15E6430071
+OAPP_arbitrum_sepolia=0x0cfE9BdF5C027623C44991fE5Ca493A93B62bD27
 
----
+# Token Addresses
+TOKEN_base_sepolia_USDT=0x323e78f944A9a1FcF3a10efcC5319DBb0bB6e673
+TOKEN_base_sepolia_USDC=0x036CbD53842c5426634e7929541eC2318f3dCF7e
+TOKEN_arbitrum_sepolia_USDT=0x30fA2FbE15c1EaDfbEF28C188b7B8dbd3c1Ff2eB
+TOKEN_arbitrum_sepolia_USDC=0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d
 
-## Troubleshooting
+# Chain Mappings
+EID_TO_CHAIN_40245=base-sepolia
+EID_TO_CHAIN_40231=arbitrum-sepolia
+```
 
-**"USDC transfer failed"**
-- Ensure you have enough USDC balance
-- Approve the bridge contract first
+## 📄 Smart Contracts
 
-**"Insufficient ETH"**
-- Get Sepolia ETH from faucets
-- Ensure you have ~0.01 ETH for gas
+### MyOApp Contract
 
-**"Wrong network"**
-- Scripts check chainId automatically
-- Verify RPC URLs in `.env`
+The main contract implementing cross-chain token payouts:
 
-**Bridge taking too long?**
-- Wait 5-10 minutes
-- Check LayerZero Scan: https://testnet.layerzeroscan.com
+**Key Functions:**
+- `requestPayoutToken()`: Initiate cross-chain token payout
+- `quotePayoutToken()`: Get fee quote for payout
+- `ownerDepositToken()`: Admin function to add liquidity
+- `ownerWithdrawToken()`: Admin function to withdraw tokens
 
----
+**Features:**
+- 3% platform fee on all transactions
+- Cross-chain message handling via LayerZero V2
+- Automatic token transfers to merchants
+- Liquidity management for payouts
 
-## Technology Stack
+## 🌐 Payment API
 
-- **Solidity 0.8.22** - Smart contract language
-- **Hardhat** - Development framework
-- **LayerZero V2** - Cross-chain messaging
-- **Stargate Finance** - Cross-chain bridge
-- **Uniswap V3** - DEX for swaps
-- **OpenZeppelin** - Security libraries
-- **Ethers.js v6** - Ethereum library
+### Server Endpoints
 
----
+- `GET /config`: Returns contract and token configuration
+- `GET /options?gas=150000`: Generates LayerZero options for gas
+- `GET /generate-link`: Creates payment links with parameters
+- `GET /`: Serves the payment interface
 
-## License
+### Usage Examples
 
-MIT
+```bash
+# Generate payment link
+curl "http://localhost:8080/generate-link?merchant=0x...&dstEid=40231&dstToken=0x...&amount=1000000"
 
----
+# Get LayerZero options
+curl "http://localhost:8080/options?gas=150000"
+```
 
-## Support
+## 🚀 Deployment
+
+### 1. Deploy Smart Contracts
+
+```bash
+cd contract
+
+# Compile contracts
+pnpm run compile:hardhat
+
+# Deploy to Base Sepolia
+npx hardhat deploy --network base-sepolia
+
+# Deploy to Arbitrum Sepolia
+npx hardhat deploy --network arbitrum-sepolia
+
+# Configure LayerZero connections
+pnpm hardhat lz:oapp:wire --oapp-config layerzero.config.ts
+```
+
+### 2. Add Liquidity
+
+```bash
+# Approve tokens for the contract
+npx hardhat lz:oapp:approveToken --network base-sepolia --token 0x323e78f944A9a1FcF3a10efcC5319DBb0bB6e673 --amount 1000000000000000000
+
+# Deposit tokens as liquidity
+npx hardhat lz:oapp:depositToken --network arbitrum-sepolia --token 0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d --amount 10000
+```
+
+### 3. Start Payment API
+
+```bash
+cd paymentapi
+npm start
+```
+
+## 💡 Usage
+
+### Making a Payment
+
+1. **Generate Payment Link**:
+   ```bash
+   curl "http://localhost:8080/generate-link?merchant=0xB7aa464b19037CF3dB7F723504dFafE7b63aAb84&dstEid=40231&dstToken=0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d&amount=1000000"
+   ```
+
+2. **User Pays**: User visits the payment link and connects their wallet
+
+3. **Cross-Chain Transfer**: System automatically:
+   - Takes 3% fee on source chain
+   - Sends 97% to destination chain
+   - Pays merchant in requested token
+
+### Direct Contract Interaction
+
+```javascript
+// Request payout from Base to Arbitrum
+await myOApp.requestPayoutToken(
+  40231, // Arbitrum Sepolia EID
+  "0x323e78f944A9a1FcF3a10efcC5319DBb0bB6e673", // USDT on Base
+  "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d", // USDC on Arbitrum
+  "0xB7aa464b19037CF3dB7F723504dFafE7b63aAb84", // Merchant address
+  1000000, // Amount (6 decimals)
+  "0x" // Options
+);
+```
+
+## 🎨 Demo Website
+
+The project includes a demo website (`DemoWebsite/`) showcasing the payment interface:
+
+- **index.html**: Main payment interface
+- **generator.html**: Payment link generator
+- **style.css**: Styling and responsive design
+
+Access the demo at: `http://localhost:8080`
+
+## 📍 Contract Addresses
+
+### Base Sepolia Testnet
+- **MyOApp**: `0x5C5254f25C24eC1dFb612067AB6CbD15E6430071`
+- **USDT**: `0x323e78f944A9a1FcF3a10efcC5319DBb0bB6e673`
+- **USDC**: `0x036CbD53842c5426634e7929541eC2318f3dCF7e`
+
+### Arbitrum Sepolia Testnet
+- **MyOApp**: `0x0cfE9BdF5C027623C44991fE5Ca493A93B62bD27`
+- **USDT**: `0x30fA2FbE15c1EaDfbEF28C188b7B8dbd3c1Ff2eB`
+- **USDC**: `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`
+
+## 🛠️ Development
+
+### Testing
+
+```bash
+cd contract
+
+# Run Hardhat tests
+pnpm run test:hardhat
+
+# Run Foundry tests
+pnpm run test:forge
+```
+
+### Linting
+
+```bash
+# Lint JavaScript/TypeScript
+pnpm run lint:js
+
+# Lint Solidity
+pnpm run lint:sol
+
+# Fix linting issues
+pnpm run lint:fix
+```
+
+### Available Tasks
+
+```bash
+# Approve tokens
+npx hardhat lz:oapp:approveToken --network base-sepolia --token <address> --amount <amount>
+
+# Deposit liquidity
+npx hardhat lz:oapp:depositToken --network arbitrum-sepolia --token <address> --amount <amount>
+
+# Request payout
+npx hardhat lz:oapp:requestPayoutToken --network base-sepolia --dst-eid 40231 --src-token <address> --merchant <address> --amount <amount>
+
+# Send test string
+npx hardhat lz:oapp:sendString --network base-sepolia --dst-eid 40231 --string "Hello Cross-Chain!"
+```
+
+## 🔒 Security
+
+### Important Security Notes
+
+⚠️ **Critical Security Considerations:**
+- Never commit private keys or `.env` files
+- Test with small amounts on testnets first
+- Ensure sufficient liquidity before processing payouts
+- Verify contract addresses before deployment
+- Monitor for insufficient liquidity errors
+- Cross-chain transactions are non-reversible
+
+### Best Practices
+
+- Use multi-signature wallets for admin functions
+- Implement proper access controls
+- Regular security audits
+- Monitor contract events for anomalies
+- Keep LayerZero configurations updated
+
+## 📊 Fee Structure
+
+- **Platform Fee**: 3% (300 basis points)
+- **LayerZero Gas**: Variable (paid by user)
+- **Net Amount**: 97% of original amount reaches merchant
+
+## 🔗 Technology Stack
+
+- **Solidity 0.8.22**: Smart contract language
+- **LayerZero V2**: Cross-chain messaging protocol
+- **Hardhat**: Development framework
+- **Foundry**: Testing framework
+- **Express.js**: Payment API server
+- **OpenZeppelin**: Security libraries
+- **Ethers.js v5**: Ethereum interaction library
+
+## 📄 License
+
+MIT License - see LICENSE file for details
+
+## 🆘 Support
 
 For issues or questions:
+
 1. Check LayerZero documentation: https://docs.layerzero.network
-2. Check Stargate documentation: https://stargatefi.gitbook.io
-3. Review transaction on block explorers
-4. Ensure all environment variables are set correctly
+2. Review transaction logs on block explorers
+3. Verify environment configuration
+4. Ensure sufficient liquidity in contracts
 
----
-
-## Quick Start Commands
+## 🚀 Quick Start
 
 ```bash
 # 1. Install dependencies
-npm install
+cd contract && pnpm install
+cd ../paymentapi && npm install
 
-# 2. Compile contracts
-npm run build
+# 2. Configure environment variables
+cp .env.example .env  # Edit with your values
 
-# 3. Deploy contracts (in order)
-node ./scripts/deploy-optimism-raw.mjs          # Deploy receiver
-node ./scripts/deploy-sepolia-raw.mjs           # Deploy main bridge
-node ./scripts/deploy-simple-bridge.mjs         # Deploy simple bridge
-node ./scripts/deploy-simple-bridge-with-fee.mjs # Deploy bridge with 0.03% fee
+# 3. Deploy contracts
+cd contract
+pnpm run compile:hardhat
+npx hardhat deploy --network base-sepolia
+npx hardhat deploy --network arbitrum-sepolia
+pnpm hardhat lz:oapp:wire --oapp-config layerzero.config.ts
 
-# 4. Test bridges
-node ./scripts/test-bridge.mjs                  # Test 3% fee + swap
-node ./scripts/test-simple-bridge.mjs           # Test no fees
-node ./scripts/test-simple-bridge-with-fee.mjs  # Test 0.03% fee
+# 4. Add liquidity
+npx hardhat lz:oapp:depositToken --network arbitrum-sepolia --token <USDC_ADDRESS> --amount 10000
+
+# 5. Start payment API
+cd ../paymentapi
+npm start
+
+# 6. Access demo at http://localhost:8080
 ```
 
 ---
 
-**Happy Bridging! 🌉**
+**Built with ❤️ using LayerZero V2**
+
+*Fracted - Bridging payments across chains*

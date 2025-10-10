@@ -1,0 +1,182 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mock Checkout</title>
+    <style>
+      :root { color-scheme: light dark; --blue-200: #bfdbfe; --blue-500: #3b82f6; --blue-600: #2563eb; --blue-800: #1e40af; }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: ui-sans-serif, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji", "Segoe UI Emoji"; line-height: 1.5; background: #fff; color: #111827; }
+      .container { max-width: 960px; margin: 0 auto; padding: 24px; }
+      h1 { margin: 0 0 16px; font-size: 28px; }
+      .card { background: #ffffff; border: 1px solid rgba(17,24,39,0.08); border-radius: 16px; padding: 16px; box-shadow: 0 4px 12px rgba(0,0,0,0.06); transition: transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+      .card:hover { box-shadow: 0 8px 24px rgba(0,0,0,0.08); }
+      @media (prefers-color-scheme: dark) {
+        body { background: #fff; color: #111827; }
+        .card { background: #ffffff; border-color: rgba(17,24,39,0.08); box-shadow: 0 4px 12px rgba(0,0,0,0.06); }
+      }
+      .product { display: grid; grid-template-columns: 160px 1fr; gap: 16px; align-items: start; }
+      .thumb { width: 100%; height: 120px; border-radius: 10px; background: #f3f4f6; display: flex; align-items: center; justify-content: center; color: #0009; font-weight: 600; overflow: hidden; }
+      .thumb img { width: 100%; height: 100%; object-fit: cover; border-radius: 10px; display: block; }
+      .details h2 { margin: 0 0 8px; font-size: 20px; }
+      .details .desc { margin: 0 0 12px; opacity: .8; }
+      .grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; margin: 12px 0; }
+      label { display: flex; flex-direction: column; gap: 6px; font-size: 14px; }
+      input[type="number"], input[type="text"] { height: 38px; padding: 0 10px; border-radius: 8px; border: 1px solid rgba(0,0,0,0.15); background: transparent; color: inherit; }
+      .total { display: flex; align-items: center; font-size: 18px; font-weight: 600; }
+      .actions { display: flex; gap: 12px; align-items: center; margin-top: 8px; }
+      button { height: 40px; padding: 0 16px; border-radius: 10px; border: 1px solid rgba(59,130,246,0.35); background: transparent; color: inherit; cursor: pointer; }
+      .primary { background: var(--blue-600); color: #fff; border-color: var(--blue-600); }
+      .primary:hover { background: var(--blue-500); border-color: var(--blue-500); }
+      .primary:active { transform: translateY(1px); background: var(--blue-800); border-color: var(--blue-800); }
+      input:focus { outline: 2px solid var(--blue-500); border-color: var(--blue-500); }
+      footer { margin-top: 18px; opacity: .7; font-size: 12px; }
+      @media (max-width: 720px) { .product { grid-template-columns: 1fr; } .grid { grid-template-columns: 1fr 1fr; } }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Checkout</h1>
+
+      <!-- 商品 A -->
+      <section class="card">
+        <div
+          class="product"
+          data-merchant="0xB7aa464b19037CF3dB7F723504dFafE7b63aAb84"
+          data-dsteid="40231"
+          data-dsttoken="0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d"
+          data-decimals="6"
+        >
+          <div class="thumb"><img src="pic/71vaBIYPs4L._AC_SL1500_.jpg" alt="Product A" loading="lazy" /></div>
+          <div class="details">
+            <h2>Product A</h2>
+            <!-- <p class="desc">基础示例。付款将跳转至支付页并携带假参数。</p> -->
+
+            <div class="grid">
+              <label>Price ($)
+                <input class="price" type="number" step="0.01" min="0" value="99.00" readonly />
+              </label>
+              <label>Quantity
+                <input class="qty" type="number" min="1" value="1" />
+              </label>
+              <div class="total">Total: <span class="total-amount">$99.00</span></div>
+            </div>
+
+            <div class="actions">
+              <button class="payBtn primary">Pay Now</button>
+            </div>
+
+            <!-- <footer>提示：将跳转到 http://localhost:8080/?merchant=...&dstEid=...&dstToken=...&amount=...</footer> -->
+          </div>
+        </div>
+      </section>
+
+      <!-- 商品 B -->
+      <section class="card">
+        <div
+          class="product"
+          data-merchant="0x1234567890abcdef1234567890abcdef12345678"
+          data-dsteid="40232"
+          data-dsttoken="0x1111111111111111111111111111111111111111"
+          data-decimals="6"
+        >
+          <div class="thumb"><img src="pic/51Im2s0UOTL._AC_SL1080_.jpg" alt="Product B" loading="lazy" /></div>
+          <div class="details">
+            <h2>Product B</h2>
+            <!-- <p class="desc">不同商户与目标链参数的示例。</p> -->
+
+            <div class="grid">
+              <label>Price ($)
+                <input class="price" type="number" step="0.01" min="0" value="149.50" readonly />
+              </label>
+              <label>Quantity
+                <input class="qty" type="number" min="1" value="2" />
+              </label>
+              <div class="total">Total: <span class="total-amount">$299.00</span></div>
+            </div>
+
+            <div class="actions">
+              <button class="payBtn primary">Pay Now</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- 商品 C -->
+      <section class="card">
+        <div
+          class="product"
+          data-merchant="0xabcdefabcdefabcdefabcdefabcdefabcdefabcd"
+          data-dsteid="40233"
+          data-dsttoken="0x2222222222222222222222222222222222222222"
+          data-decimals="6"
+        >
+          <div class="thumb"><img src="pic/8eca8cc1dcfbf7cc4bf0cf189d497610.png" alt="Product C" loading="lazy" /></div>
+          <div class="details">
+            <h2>Product C</h2>
+            <!-- <p class="desc">第三个示例，用于批量测试支付跳转。</p> -->
+
+            <div class="grid">
+              <label>Price ($)
+                <input class="price" type="number" step="0.01" min="0" value="12.34" readonly />
+              </label>
+              <label>Quantity
+                <input class="qty" type="number" min="1" value="3" />
+              </label>
+              <div class="total">Total: <span class="total-amount">$37.02</span></div>
+            </div>
+
+            <div class="actions">
+              <button class="payBtn primary">Pay Now</button>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <script>
+      function setupProductCard(productEl) {
+        const priceInput = productEl.querySelector('.price');
+        const qtyInput = productEl.querySelector('.qty');
+        const totalEl = productEl.querySelector('.total-amount');
+        const payBtn = productEl.querySelector('.payBtn');
+
+        function updateTotal() {
+          const price = parseFloat(priceInput.value || '0');
+          const qty = parseInt(qtyInput.value || '0', 10);
+          const total = Math.max(0, price) * Math.max(0, qty);
+          totalEl.textContent = '$' + total.toFixed(2);
+        }
+
+        priceInput.addEventListener('input', updateTotal);
+        qtyInput.addEventListener('input', updateTotal);
+        updateTotal();
+
+        payBtn.addEventListener('click', function () {
+          const merchant = productEl.dataset.merchant || '0xB7aa464b19037CF3dB7F723504dFafE7b63aAb84';
+          const dstEid = productEl.dataset.dsteid || '40231';
+          const dstToken = productEl.dataset.dsttoken || '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d';
+
+          const price = parseFloat(priceInput.value || '0');
+          const qty = parseInt(qtyInput.value || '0', 10);
+          const total = Math.max(0, price) * Math.max(0, qty);
+          const amount = String(Math.max(0, Math.round(total * 1e6)));
+
+          const url =
+            'http://localhost:8080/?' +
+            'merchant=' + encodeURIComponent(merchant) +
+            '&dstEid=' + encodeURIComponent(dstEid) +
+            '&dstToken=' + encodeURIComponent(dstToken) +
+            '&amount=' + encodeURIComponent(amount);
+
+          window.location.href = url;
+        });
+      }
+
+      document.querySelectorAll('.product').forEach(setupProductCard);
+    </script>
+  </body>
+  </html>
+
+
