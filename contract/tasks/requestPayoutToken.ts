@@ -18,8 +18,6 @@ task(
         undefined,
         types.string
     )
-    .addOptionalParam('options', 'Execution options (hex string)', '0x', types.string)
-    .addOptionalParam('gas', 'LZ_RECEIVE gas for msgType=2 (used if options is 0x)', 150000, types.int)
     .setAction(
         async (
             args: {
@@ -28,8 +26,6 @@ task(
                 dstToken: string
                 merchant: string
                 amount: string
-                options?: string
-                gas?: number
             },
             hre: HardhatRuntimeEnvironment
         ) => {
@@ -45,13 +41,8 @@ task(
             console.log(`Merchant: ${args.merchant}`)
             console.log(`Amount:   ${args.amount}`)
 
-            // Build options if not provided
-            const options = args.options || '0x'
-            const optionsHex =
-                options !== '0x'
-                    ? options
-                    : Options.newOptions().addExecutorLzReceiveOption(Number(args.gas), 0).toHex()
-            console.log(`Options:  ${optionsHex} (gas=${args.gas})`)
+            const optionsHex = Options.newOptions().addExecutorLzReceiveOption(150000, 0).toHex()
+            console.log(`Options:  ${optionsHex} (gas=${150000})`)
 
             // 1) Quote message fee
             console.log('Quoting LayerZero message fee...')

@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fracted Payment</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Fracted Payment</h1>
+      <p class="subtitle">Pay with stablecoins on Arbitrum/Base Sepolia. Funds will be paid out cross-chain to the merchant.</p>
+
+      <section class="card">
+        <h2>Merchant Order</h2>
+        <div class="grid">
+          <label>Merchant Address
+            <input id="merchant" type="text" readonly />
+          </label>
+          <label>Destination EID
+            <input id="dstEid" type="number" readonly />
+          </label>
+          <label>Destination Token (on destination chain)
+            <input id="dstToken" type="text" readonly />
+          </label>
+          <label>Amount (gross, smallest units)
+            <input id="amount" type="text" readonly />
+          </label>
+        </div>
+      </section>
+
+      <section class="card">
+        <h2>Your Payment</h2>
+        <div class="grid">
+          <label>Source Network
+            <select id="srcNetwork">
+              <option value="arbitrum-sepolia">Arbitrum Sepolia</option>
+              <option value="base-sepolia">Base Sepolia</option>
+            </select>
+          </label>
+          <label>Source Token
+            <select id="srcTokenSelect">
+              <option value="USDT">USDT</option>
+              <option value="USDC">USDC</option>
+              <option value="XUSD">XUSD</option>
+            </select>
+          </label>
+        </div>
+        <div class="row">
+          <button id="connectBtn">Connect Wallet</button>
+          <div id="walletInfo"></div>
+        </div>
+        <div class="row">
+          <button id="approveBtn">Approve Source Token</button>
+          <button id="payBtn" class="primary">Pay</button>
+        </div>
+        <pre id="log"></pre>
+      </section>
+    </div>
+
+    <script src="/app.js"></script>
+  </body>
+</html>
