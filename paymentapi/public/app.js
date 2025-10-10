@@ -131,14 +131,18 @@ function updateDisplayNames() {
   console.log('EID_TO_CHAIN:', EID_TO_CHAIN)
   console.log('TOKEN_ADDRESS_TO_SYMBOL:', TOKEN_ADDRESS_TO_SYMBOL)
   
-  // Update EID display - show friendly name in the input field
+  // Update EID display - show friendly name but keep original value for processing
   const chainName = EID_TO_CHAIN[dstEid] || `EID ${dstEid}`
   console.log('Chain name for EID', dstEid, ':', chainName)
+  // Store original EID in a data attribute and show friendly name
+  $('dstEid').setAttribute('data-original-eid', dstEid)
   $('dstEid').value = chainName
   
-  // Update token display - show friendly name in the input field
+  // Update token display - show friendly name but keep original value for processing
   const tokenSymbol = TOKEN_ADDRESS_TO_SYMBOL[dstToken] || 'Unknown Token'
   console.log('Token symbol for address', dstToken, ':', tokenSymbol)
+  // Store original token address in a data attribute and show friendly name
+  $('dstToken').setAttribute('data-original-token', dstToken)
   $('dstToken').value = tokenSymbol
 }
 
@@ -263,8 +267,39 @@ window.addEventListener('load', async () => {
         throw new Error('Missing required fields (oappAddress, merchant, dstEid, dstToken, amount, srcToken)')
       }
 
+      // Get the original EID number from data attribute or current value
+      let dstEid
+      const originalEid = $('dstEid').getAttribute('data-original-eid')
+      if (originalEid) {
+        // Use the original EID number stored in data attribute
+        dstEid = Number(originalEid)
+      } else if (dstEidStr.startsWith('EID ')) {
+        // Extract number from "EID 12345" format
+        dstEid = Number(dstEidStr.replace('EID ', ''))
+      } else {
+        // Try to find EID by chain name (reverse lookup)
+        const foundEid = Object.keys(EID_TO_CHAIN).find(eid => EID_TO_CHAIN[eid] === dstEidStr)
+        if (foundEid) {
+          dstEid = Number(foundEid)
+        } else {
+          // Try direct conversion
+          dstEid = Number(dstEidStr)
+        }
+      }
+
+      // Validate dstEid is a valid number
+      if (isNaN(dstEid) || dstEid <= 0) {
+        throw new Error(`Invalid destination EID: ${dstEidStr}. Expected a positive number or valid chain name.`)
+      }
+
+      // Get the original token address from data attribute or current value
+      let dstTokenAddress = dstToken
+      const originalToken = $('dstToken').getAttribute('data-original-token')
+      if (originalToken) {
+        dstTokenAddress = originalToken
+      }
+
       const myOApp = new ethers.Contract(oapp, MYOAPP_ABI, signer)
-      const dstEid = Number(dstEidStr)
 
       // Build options hex via backend (mirror hardhat task behavior)
       log('Building LayerZero options (executor receive gas)...')
@@ -277,7 +312,7 @@ window.addEventListener('load', async () => {
       log('Quoting fee...')
       const fee = await myOApp.quotePayoutToken(
         dstEid,
-        dstToken,
+        dstTokenAddress,
         merchant,
         amount,
         optionsHex,
@@ -289,7 +324,7 @@ window.addEventListener('load', async () => {
       const tx = await myOApp.requestPayoutToken(
         dstEid,
         srcToken,
-        dstToken,
+        dstTokenAddress,
         merchant,
         amount,
         optionsHex,
