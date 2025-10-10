@@ -39,6 +39,19 @@ let OAPP_ADDRESSES = {
   'base-sepolia': '',
 }
 
+// Token decimals mapping (most stablecoins use 6 decimals, but some use 18)
+const TOKEN_DECIMALS = {
+  'USDT': 6,
+  'USDC': 6,
+  'XUSD': 18
+}
+
+// EID to Chain Name mapping (loaded from server)
+let EID_TO_CHAIN = {}
+
+// Token address to symbol mapping (loaded from server)
+let TOKEN_ADDRESS_TO_SYMBOL = {}
+
 // Minimal ABIs
 const ERC20_ABI = [
   'function approve(address spender, uint256 amount) external returns (bool)',
@@ -68,6 +81,16 @@ function setFormFromQuery() {
   $('dstEid').value = getQueryParam('dstEid')
   $('dstToken').value = getQueryParam('dstToken')
   $('amount').value = getQueryParam('amount')
+  
+  console.log('setFormFromQuery called, loadedConfig:', loadedConfig)
+  
+  // Update amount display after setting form values
+  updateAmountDisplay()
+  
+  // Update display names if config is already loaded
+  if (loadedConfig) {
+    updateDisplayNames()
+  }
 }
 
 function resolveSrcTokenAddress() {
@@ -75,6 +98,48 @@ function resolveSrcTokenAddress() {
   const sym = $('srcTokenSelect').value
   const addr = (TOKEN_ADDRESSES[net] && TOKEN_ADDRESSES[net][sym]) || ''
   return addr
+}
+
+function formatAmountToUSD(amountWei, tokenSymbol) {
+  if (!amountWei || amountWei === '0') return '$0.00'
+  
+  const decimals = TOKEN_DECIMALS[tokenSymbol] || 6
+  const amount = ethers.utils.formatUnits(amountWei, decimals)
+  const usdAmount = parseFloat(amount).toFixed(2)
+  return `$${usdAmount}`
+}
+
+function updateAmountDisplay() {
+  const amountWei = $('amount').value
+  const dstToken = $('dstToken').value
+  
+  // Get token symbol from server mapping
+  const tokenSymbol = TOKEN_ADDRESS_TO_SYMBOL[dstToken] || 'USDC'
+  
+  const usdAmount = formatAmountToUSD(amountWei, tokenSymbol)
+  $('amountDisplay').textContent = usdAmount
+  
+  // Hide details section - only show USD amount
+  $('amountDetails').textContent = ''
+}
+
+function updateDisplayNames() {
+  const dstEid = $('dstEid').value
+  const dstToken = $('dstToken').value
+  
+  console.log('updateDisplayNames called with:', { dstEid, dstToken })
+  console.log('EID_TO_CHAIN:', EID_TO_CHAIN)
+  console.log('TOKEN_ADDRESS_TO_SYMBOL:', TOKEN_ADDRESS_TO_SYMBOL)
+  
+  // Update EID display - show friendly name in the input field
+  const chainName = EID_TO_CHAIN[dstEid] || `EID ${dstEid}`
+  console.log('Chain name for EID', dstEid, ':', chainName)
+  $('dstEid').value = chainName
+  
+  // Update token display - show friendly name in the input field
+  const tokenSymbol = TOKEN_ADDRESS_TO_SYMBOL[dstToken] || 'Unknown Token'
+  console.log('Token symbol for address', dstToken, ':', tokenSymbol)
+  $('dstToken').value = tokenSymbol
 }
 
 async function ensureNetwork(targetKey) {
@@ -110,17 +175,25 @@ async function loadConfigAndApply() {
       const cfg = await res.json()
       if (cfg?.tokens) TOKEN_ADDRESSES = { ...TOKEN_ADDRESSES, ...cfg.tokens }
       if (cfg?.contracts) OAPP_ADDRESSES = { ...OAPP_ADDRESSES, ...cfg.contracts }
+      if (cfg?.eidToChain) EID_TO_CHAIN = { ...EID_TO_CHAIN, ...cfg.eidToChain }
+      if (cfg?.tokenToSymbol) TOKEN_ADDRESS_TO_SYMBOL = { ...TOKEN_ADDRESS_TO_SYMBOL, ...cfg.tokenToSymbol }
       loadedConfig = true
-      // Nothing to set in UI; OAPP address will be resolved at runtime from OAPP_ADDRESSES
+      
+      // Debug: Log loaded mappings
+      console.log('Loaded EID_TO_CHAIN:', EID_TO_CHAIN)
+      console.log('Loaded TOKEN_ADDRESS_TO_SYMBOL:', TOKEN_ADDRESS_TO_SYMBOL)
+      
+      // Update display names after loading config from server
+      updateDisplayNames()
     }
   } catch (e) {
-    // ignore, fallback to defaults
+    console.error('Failed to load config:', e)
   }
 }
 
-window.addEventListener('load', () => {
+window.addEventListener('load', async () => {
   setFormFromQuery()
-  loadConfigAndApply()
+  await loadConfigAndApply()
 
   // React to network changes if needed (no UI field now)
   $('srcNetwork').addEventListener('change', () => {})

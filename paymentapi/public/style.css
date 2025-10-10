@@ -11,4 +11,50 @@ button { background: #192232; border: 1px solid #2a3a54; color: #e6edf3; border-
 button.primary { background: #2164f3; border-color: #2164f3; }
 #log { background: #03070d; border: 1px solid #1f2a3a; color: #a7b6c7; min-height: 120px; padding: 12px; border-radius: 8px; overflow: auto; }
 .help { color: #7f95af; font-size: 12px; margin-top: 6px; }
-@media (max-width: 720px){ .grid { grid-template-columns: 1fr; } }
+
+/* Amount Display Styles */
+.amount-display { 
+  text-align: center; 
+  background: linear-gradient(135deg, #0f1623 0%, #1a2332 100%);
+  border: 2px solid #2164f3;
+  box-shadow: 0 0 20px rgba(33, 100, 243, 0.1);
+}
+.amount-container { padding: 20px; }
+.amount-display h2 { 
+  margin: 0 0 16px 0; 
+  color: #e6edf3; 
+  font-size: 18px; 
+  font-weight: 600;
+}
+.amount-value { 
+  font-size: 48px; 
+  font-weight: 700; 
+  color: #2164f3; 
+  margin: 16px 0; 
+  text-shadow: 0 0 10px rgba(33, 100, 243, 0.3);
+  letter-spacing: -1px;
+}
+.amount-details { 
+  color: #9fb2c8; 
+  font-size: 14px; 
+  margin-top: 8px;
+}
+
+.display-name {
+  background: #0b111a;
+  border: 1px solid #1f2a3a;
+  color: #e6edf3;
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-size: 14px;
+  margin-top: 6px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  box-sizing: border-box;
+}
+
+@media (max-width: 720px){ 
+  .grid { grid-template-columns: 1fr; } 
+  .amount-value { font-size: 36px; }
+}

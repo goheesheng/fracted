@@ -19,7 +19,7 @@
             <input id="merchant" type="text" readonly />
           </label>
           <label>Destination EID
-            <input id="dstEid" type="number" readonly />
+            <input id="dstEid" type="text" readonly />
           </label>
           <label>Destination Token (on destination chain)
             <input id="dstToken" type="text" readonly />
@@ -27,6 +27,15 @@
           <label>Amount (gross, smallest units)
             <input id="amount" type="text" readonly />
           </label>
+        </div>
+      </section>
+
+      <!-- Payment Amount Display -->
+      <section class="card amount-display">
+        <div class="amount-container">
+          <h2>Payment Amount</h2>
+          <div class="amount-value" id="amountDisplay">$0.00</div>
+          <div class="amount-details" id="amountDetails">Loading...</div>
         </div>
       </section>
 
