@@ -7,6 +7,25 @@ import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+/// @notice Minimal Permit2 allowance-transfer interface (Uniswap Permit2)
+interface IAllowanceTransfer {
+    struct PermitDetails {
+        address token;
+        uint160 amount;
+        uint48 expiration;
+        uint48 nonce;
+    }
+
+    struct PermitSingle {
+        PermitDetails details;
+        address spender;
+        uint256 sigDeadline;
+    }
+
+    function permit(address owner, PermitSingle calldata permitSingle, bytes calldata signature) external;
+    function transferFrom(address from, address to, uint160 amount, address token) external;
+}
+
 contract MyOApp is OApp, OAppOptionsType3 {
     using SafeERC20 for IERC20;
     /// @notice Last string received from any remote chain (legacy example)
@@ -45,6 +64,9 @@ contract MyOApp is OApp, OAppOptionsType3 {
     /// @dev Reverts when the contract lacks liquidity to fulfill a payout
     error InsufficientLiquidity(uint256 requested, uint256 available);
 
+    /// @notice Permit2 contract used for gasless token pulls (Uniswap Permit2)
+    address public permit2;
+
     /// @notice Initialize with Endpoint V2 and owner address
     /// @param _endpoint The local chain's LayerZero Endpoint V2 address
     /// @param _owner    The address permitted to configure this OApp
@@ -82,6 +104,12 @@ contract MyOApp is OApp, OAppOptionsType3 {
     // ──────────────────────────────────────────────────────────────────────────────
     // Admin token routes and liquidity for tokens
     // ──────────────────────────────────────────────────────────────────────────────
+
+    /// @notice Owner sets/updates the Permit2 contract address
+    function setPermit2(address _permit2) external onlyOwner {
+        require(_permit2 != address(0), "permit2=0");
+        permit2 = _permit2;
+    }
 
     /// @notice Owner deposits tokens into the contract as liquidity
     function ownerDepositToken(address _token, uint256 _amount) external onlyOwner {
@@ -197,6 +225,94 @@ contract MyOApp is OApp, OAppOptionsType3 {
             _message,
             combineOptions(_dstEid, PAYOUT, _options),
             MessagingFee(fee.nativeFee, 0),
+            payable(msg.sender)
+        );
+
+        uint256 surplus = msg.value - required;
+        if (surplus > 0) {
+            (bool ok, ) = payable(msg.sender).call{ value: surplus }("");
+            require(ok, "refund failed");
+        }
+
+        emit TokenPayoutRequested(
+            _dstEid,
+            msg.sender,
+            _merchant,
+            _srcToken,
+            _dstToken,
+            _amount,
+            netAmount,
+            feeAmount
+        );
+    }
+
+    /**
+     * @notice User requests a token-based payout using Permit2 for allowance + transfer in a single tx.
+     * @dev    Caller provides a Permit2 signature so no prior ERC20 approve to this contract is needed.
+     * @param _dstEid   Destination Endpoint ID
+     * @param _dstToken Destination token paid out to merchant on destination chain
+     * @param _merchant Merchant address on destination chain
+     * @param _amount   Gross amount of source token to pull from caller
+     * @param _options  Execution options for the cross-chain message
+     * @param _permit   Permit2 PermitSingle struct authorizing this contract (spender) for the amount
+     * @param _signature EIP-712 signature for Permit2
+     */
+    function requestPayoutTokenWithPermit2(
+        uint32 _dstEid,
+        address _srcToken,
+        address _dstToken,
+        address _merchant,
+        uint256 _amount,
+        bytes calldata _options,
+        IAllowanceTransfer.PermitSingle calldata _permit,
+        bytes calldata _signature
+    ) external payable {
+        require(permit2 != address(0), "permit2 not set");
+        require(_srcToken != address(0), "src token=0");
+        require(_dstToken != address(0), "dst token=0");
+        require(_merchant != address(0), "merchant=0");
+        require(_amount > 0, "amount=0");
+
+        // Sanity checks against provided permit
+        require(_permit.details.token == _srcToken, "permit token mismatch");
+        require(_permit.spender == address(this), "permit spender!=this");
+        require(uint256(_permit.details.amount) >= _amount, "permit amount<amount");
+
+        // Consume Permit2 signature to grant allowance to this contract
+        IAllowanceTransfer(permit2).permit(msg.sender, _permit, _signature);
+
+        // Pull tokens via Permit2 transferFrom using the permitted amount
+        IAllowanceTransfer(permit2).transferFrom(msg.sender, address(this), uint160(_amount), _srcToken);
+
+        // Process the payout using internal function to reduce stack depth
+        _processTokenPayout(_dstEid, _srcToken, _dstToken, _merchant, _amount, _options);
+    }
+
+    /**
+     * @notice Internal function to process token payout to reduce stack depth
+     */
+    function _processTokenPayout(
+        uint32 _dstEid,
+        address _srcToken,
+        address _dstToken,
+        address _merchant,
+        uint256 _amount,
+        bytes calldata _options
+    ) internal {
+        (uint256 netAmount, uint256 feeAmount) = _netOfFee(_amount);
+
+        bytes memory _message = abi.encode(TAG_TOKEN_PAYOUT, _dstToken, _merchant, netAmount);
+
+        // Quote and enforce native messaging fee
+        MessagingFee memory f = _quote(_dstEid, _message, combineOptions(_dstEid, PAYOUT, _options), false);
+        uint256 required = f.nativeFee;
+        if (msg.value < required) revert InsufficientMsgValue(msg.value, required);
+
+        _lzSend(
+            _dstEid,
+            _message,
+            combineOptions(_dstEid, PAYOUT, _options),
+            MessagingFee(f.nativeFee, 0),
             payable(msg.sender)
         );
 
