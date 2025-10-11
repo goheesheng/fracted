@@ -1,0 +1,309 @@
+package main
+
+import (
+	"context"
+	"fmt"
+	"log"
+	"math"
+	"math/big"
+	"math/rand"
+	"net/http"
+	"os"
+	"strings"
+	"sync"
+	"time"
+
+	// 如果你的 contract 包路径不同（参见 go.mod 的 module），请修改下面这行
+
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/ethclient"
+)
+
+// --------------------------- CONFIG (请按需替换) ---------------------------
+const (
+	// 【必填】用于实时监听的 WSS RPC（你的 Base Sepolia WSS）
+	baseSepoliaWSS = "wss://base-sepolia.publicnode.com"
+
+	// 【必填】用于历史查询的 HTTPS RPC
+	baseSepoliaHTTPS = "https://base-sepolia.publicnode.com"
+
+	// 可选：用于目标链交付状态检查（Arbitrum Sepolia）
+	arbSepoliaHTTPS = "https://arbitrum-sepolia.publicnode.com"
+
+	// 【必填】你实际部署的 Base Sepolia 合约地址（示例）
+	oappContractAddress = "0xe2f36c4f1BF9E7B7261c676E35b8d17C0845382A"
+
+	// 大多数 USDT/USDC 使用 6 位小数
+	TokenDecimals = 6.0
+)
+
+// TokenPayoutRequested event topic (请确保该 topic 与合约一致)
+var tokenPayoutRequestedTopic = common.HexToHash("0xdd9e34114af31ed8b7896e826d4d77f69661c83c3fb0dfde856e2de117034601")
+
+// --------------------------- 全局状态 ---------------------------
+var (
+	wssStatus string = "Disconnected"
+	mu        sync.Mutex
+)
+
+// --------------------------- helper: clear screen ---------------------------
+func clearScreen() {
+	// 简单清屏（大多数终端支持）
+	fmt.Print("\033[H\033[2J")
+}
+
+// formatAmount: 把 big.Int 格式化为可读字符串
+func formatAmount(amount *big.Int) string {
+	if amount == nil {
+		return "N/A"
+	}
+	f := new(big.Float).SetInt(amount)
+	divisor := big.NewFloat(math.Pow(10, TokenDecimals))
+	f.Quo(f, divisor)
+	if f.Cmp(big.NewFloat(1000000)) >= 0 {
+		f.Quo(f, big.NewFloat(1000000))
+		return fmt.Sprintf("%.2f M", f)
+	}
+	if f.Cmp(big.NewFloat(1000)) >= 0 {
+		f.Quo(f, big.NewFloat(1000))
+		return fmt.Sprintf("%.2f K", f)
+	}
+	return fmt.Sprintf("%.2f", f)
+}
+
+// --------------------------- Listener (带重连) ---------------------------
+func listenForNewEvents(ctx context.Context, client *ethclient.Client, oappAddress common.Address, eventTopic common.Hash, proc *Processor) {
+	backoff := 1 * time.Second
+	for {
+		select {
+		case <-ctx.Done():
+			log.Println("listener: context cancelled, exiting")
+			return
+		default:
+		}
+
+		mu.Lock()
+		wssStatus = "Connecting"
+		mu.Unlock()
+
+		query := ethereum.FilterQuery{
+			Addresses: []common.Address{oappAddress},
+			Topics:    [][]common.Hash{{eventTopic}},
+		}
+		logsCh := make(chan types.Log)
+		sub, err := client.SubscribeFilterLogs(ctx, query, logsCh)
+		if err != nil {
+			// 不致命：打日志并重试（指数退避）
+			errMsg := err.Error()
+			if len(errMsg) > 80 {
+				errMsg = errMsg[:80] + "..."
+			}
+			mu.Lock()
+			wssStatus = fmt.Sprintf("Error: %s", errMsg)
+			mu.Unlock()
+			log.Printf("listener: subscribe error: %v — retrying in %s", err, backoff)
+			time.Sleep(backoff)
+			backoff *= 2
+			if backoff > 60*time.Second {
+				backoff = 60 * time.Second
+			}
+			continue
+		}
+
+		// 成功订阅
+		backoff = 1 * time.Second
+		mu.Lock()
+		wssStatus = "Connected"
+		mu.Unlock()
+		log.Println("listener: subscribed to logs")
+
+		// 接收循环
+	loop:
+		for {
+			select {
+			case <-ctx.Done():
+				sub.Unsubscribe()
+				break loop
+			case err := <-sub.Err():
+				log.Printf("listener: subscription error: %v — will reconnect", err)
+				sub.Unsubscribe()
+				break loop
+			case vLog := <-logsCh:
+				// 非阻塞地把 log 交给 processor 去处理
+				go func(l types.Log) {
+					if err := proc.ParseAndPersist(context.Background(), l); err != nil {
+						log.Printf("processor error: %v", err)
+					}
+				}(vLog)
+			}
+		}
+
+		// 小延迟后重连
+		time.Sleep(2 * time.Second)
+	}
+}
+
+// --------------------------- Backfill (历史回溯) ---------------------------
+func backfillHistoricalEvents(client *ethclient.Client, oappAddress common.Address, eventTopic common.Hash, proc *Processor) uint64 {
+	log.Println("backfill: starting historical scan (200 blocks)")
+	ctx := context.Background()
+	header, err := client.HeaderByNumber(ctx, nil)
+	if err != nil {
+		log.Printf("backfill: HeaderByNumber error: %v", err)
+		return 0
+	}
+	latestBlock := header.Number.Uint64()
+	const backfillBlocks = 200
+	var fromBlock uint64
+	if latestBlock > backfillBlocks {
+		fromBlock = latestBlock - backfillBlocks
+	} else {
+		fromBlock = 0
+	}
+
+	query := ethereum.FilterQuery{
+		FromBlock: new(big.Int).SetUint64(fromBlock),
+		ToBlock:   new(big.Int).SetUint64(latestBlock),
+		Addresses: []common.Address{oappAddress},
+		Topics:    [][]common.Hash{{eventTopic}},
+	}
+	logs, err := client.FilterLogs(ctx, query)
+	if err != nil {
+		log.Printf("backfill: FilterLogs error: %v", err)
+		return latestBlock
+	}
+	log.Printf("backfill: found %d logs in [%d - %d]", len(logs), fromBlock, latestBlock)
+	// 倒序处理以保证时间顺序
+	for i := len(logs) - 1; i >= 0; i-- {
+		if err := proc.ParseAndPersist(ctx, logs[i]); err != nil {
+			log.Printf("backfill: parse error for tx %s idx %d: %v", logs[i].TxHash.Hex(), logs[i].Index, err)
+		}
+	}
+	return latestBlock
+}
+
+// --------------------------- Delivery worker (占位) ---------------------------
+// 这里保留最小实现：周期扫描 DB 的 Pending（真实环境应到目标链检查）
+func trackDeliveryStatus(store *Store) {
+	ticker := time.NewTicker(15 * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		// MVP: 仅打印提醒。后续可实现：扫描 payouts WHERE status='Pending'
+		// 对接目标链(arbitrum)事件并更新为 Delivered/Failed。
+		log.Println("worker: tick - delivery checker placeholder")
+	}
+}
+
+// --------------------------- Dashboard 简化渲染 ---------------------------
+func renderDashboard(latestBlock uint64) {
+	clearScreen()
+	mu.Lock()
+	status := wssStatus
+	mu.Unlock()
+	var colored string
+	switch status {
+	case "Connected":
+		colored = "\033[32mConnected\033[0m"
+	case "Disconnected":
+		colored = "\033[31mDisconnected\033[0m"
+	case "Connecting":
+		colored = "\033[33mConnecting\033[0m"
+	default:
+		colored = status
+	}
+	fmt.Println(strings.Repeat("=", 110))
+	fmt.Printf("LayerZero Cross-Chain Indexer | WSS: %s | Contract: %s\n", colored, oappContractAddress)
+	fmt.Printf("Latest Block (Base Sepolia HTTPS): %d\n", latestBlock)
+	fmt.Println(strings.Repeat("=", 110))
+	fmt.Printf("API: http://localhost:8080/health  |  Payouts DB: indexer.db\n")
+	fmt.Println()
+	fmt.Println("Logs printed below (press Ctrl+C to stop):")
+}
+
+// --------------------------- main ---------------------------
+func main() {
+	// 随机种子（若 later 使用随机模拟）
+	rand.Seed(time.Now().UnixNano())
+
+	// 1) 初始化 Store (SQLite)
+	dbPath := "indexer.db"
+	store, err := NewStore(dbPath)
+	if err != nil {
+		log.Fatalf("main: NewStore error: %v", err)
+	}
+	defer func() {
+		if err := store.Close(); err != nil {
+			log.Printf("main: store close error: %v", err)
+		}
+	}()
+
+	// 2) 初始化 ETH clients
+	wssClient, err := ethclient.Dial(baseSepoliaWSS)
+	if err != nil {
+		log.Printf("main: cannot connect WSS RPC (%s): %v", baseSepoliaWSS, err)
+		// 不 fatal，listener 会重试
+		wssClient = nil
+	} else {
+		log.Println("main: WSS client ready")
+	}
+
+	httpsClient, err := ethclient.Dial(baseSepoliaHTTPS)
+	if err != nil {
+		log.Fatalf("main: cannot connect HTTPS RPC (%s): %v", baseSepoliaHTTPS, err)
+	}
+	log.Println("main: HTTPS client ready")
+
+	// optional: arb client for delivery checks
+	// NOTE: 暂时不在 MVP 中使用 Arbitrum 客户端；如需启用请在此处初始化并确保后续代码使用该变量。
+	// 保留此注释以便未来扩展。
+
+	// 3) Processor
+	proc := NewProcessor(httpsClient, store)
+
+	// 4) Backfill once
+	oappAddr := common.HexToAddress(oappContractAddress)
+	latestBlock := backfillHistoricalEvents(httpsClient, oappAddr, tokenPayoutRequestedTopic, proc)
+
+	// 5) Start WSS listener (if wss client created)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if wssClient != nil {
+		go listenForNewEvents(ctx, wssClient, oappAddr, tokenPayoutRequestedTopic, proc)
+	} else {
+		mu.Lock()
+		wssStatus = "Disconnected"
+		mu.Unlock()
+	}
+
+	// 6) Start delivery worker (placeholder)
+	go trackDeliveryStatus(store)
+	// 启动状态更新器：每 15 秒检查一次 Pending（你可以根据需要调整间隔）
+	go statusUpdater(store, httpsClient, 15*time.Second)
+
+	// 7) Start API server (api.go must provide NewServer)
+	server := NewServer(store, httpsClient, oappAddr, tokenPayoutRequestedTopic, proc)
+	go func() {
+		addr := ":8080"
+		log.Printf("main: starting API at %s", addr)
+		if err := http.ListenAndServe(addr, server.routes()); err != nil {
+			log.Fatalf("main: API ListenAndServe error: %v", err)
+		}
+	}()
+
+	// 8) Dashboard refresh loop
+	ticker := time.NewTicker(5 * time.Second)
+	defer ticker.Stop()
+	for range ticker.C {
+		// try to refresh latest block
+		header, err := httpsClient.HeaderByNumber(context.Background(), nil)
+		if err == nil && header != nil && header.Number != nil {
+			latestBlock = header.Number.Uint64()
+		}
+		renderDashboard(latestBlock)
+
+		// Print a small memory hint / pid for debugging (optional)
+		fmt.Printf("pid=%d  time=%s\n", os.Getpid(), time.Now().Format("2006-01-02 15:04:05"))
+	}
+}
