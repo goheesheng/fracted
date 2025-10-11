@@ -141,6 +141,11 @@ app.get('/generate-link', (req, res) => {
   }
 })
 
+// Initiate payment page route
+app.get('/initiatebyuser', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'initiate.html'))
+})
+
 // Root serves the payment page; parameters are read by client from the query string
 app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'))

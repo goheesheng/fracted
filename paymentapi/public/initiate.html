@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Initiate Payment</title>
+    <link rel="stylesheet" href="/style.css" />
+  </head>
+  <body>
+    <div class="seller-side">
+      <div class="particles">
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+        <div class="particle"></div>
+      </div>
+
+      <div class="seller-content">
+        <div class="title-section" style="margin-top: 16px;">
+          <div class="logo">
+            <img src="/logo.png" alt="Fracted Logo" width="140" height="40" />
+          </div>
+        </div>
+
+        <div class="payment-content">
+          <h2>Make Your Payment</h2>
+
+          <div class="payment-options">
+            <div class="option-group">
+              <label>Selection of Stables to pay</label>
+              <select id="stable">
+                <option value="USDT">USDT</option>
+                <option value="USDC" selected>USDC</option>
+                <option value="XUSD">XUSD</option>
+              </select>
+            </div>
+
+            <div class="option-group">
+              <label>Amount to enter (USD)</label>
+              <input id="amount" type="number" step="0.01" min="0.01" placeholder="e.g. 99.00" />
+            </div>
+
+            <div class="option-group">
+              <label>Wallet address</label>
+              <input id="wallet" type="text" placeholder="0x..." />
+            </div>
+          </div>
+
+          <div class="action-buttons">
+            <button id="payBtn" class="action-btn primary">Pay</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script>
+      const $ = (id) => document.getElementById(id)
+      function isAddress(v) { return /^0x[a-fA-F0-9]{40}$/.test((v||'').trim()) }
+      const DECIMALS = { USDT: 6, USDC: 6, XUSD: 18 }
+
+      $('payBtn').addEventListener('click', () => {
+        const stable = $('stable').value
+        const amountStr = $('amount').value
+        const wallet = $('wallet').value.trim()
+
+        const amount = parseFloat(amountStr)
+        if (!amountStr || isNaN(amount) || amount <= 0) { alert('Please enter a valid amount'); return }
+        if (!isAddress(wallet)) { alert('Invalid wallet address'); return }
+
+        const decimals = DECIMALS[stable] ?? 6
+        const smallest = String(Math.round(amount * Math.pow(10, decimals)))
+
+        // Redirect to merchant generator page with query params
+        const qs = new URLSearchParams({ token: stable, amount: smallest, wallet }).toString()
+        window.location.href = `/generator.html?${qs}`
+      })
+
+      // No reset button in unified style
+    </script>
+  </body>
+  </html>
+
+
