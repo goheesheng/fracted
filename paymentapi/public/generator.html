@@ -5,6 +5,86 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>Payment Link Generator</title>
     <link rel="stylesheet" href="/style.css" />
+    <script>
+      // Simple QR code generation using multiple fallback services
+      function generateQRCodeSimple(paymentLink) {
+        const canvas = document.getElementById('qrCode')
+        const placeholder = document.getElementById('qrPlaceholder')
+        const downloadBtn = document.getElementById('downloadQrBtn')
+        
+        if (!paymentLink) {
+          placeholder.innerHTML = '<p>No payment link provided</p>'
+          return
+        }
+        
+        // Clear previous content
+        canvas.style.display = 'none'
+        placeholder.style.display = 'block'
+        downloadBtn.style.display = 'none'
+        
+        // Remove any existing QR image
+        const existingImg = placeholder.parentNode.querySelector('img')
+        if (existingImg) {
+          existingImg.remove()
+        }
+        
+        // Reset placeholder content
+        placeholder.innerHTML = '<p>Generating QR code...</p>'
+        
+        // Try multiple QR code services
+        const qrServices = [
+          `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(paymentLink)}`,
+          `https://chart.googleapis.com/chart?chs=200x200&cht=qr&chl=${encodeURIComponent(paymentLink)}`,
+          `https://quickchart.io/qr?text=${encodeURIComponent(paymentLink)}&size=200`
+        ]
+        
+        let currentServiceIndex = 0
+        
+        function tryNextService() {
+          if (currentServiceIndex >= qrServices.length) {
+            placeholder.innerHTML = '<p>Unable to generate QR code. Please check your internet connection.</p>'
+            return
+          }
+          
+          const img = document.createElement('img')
+          img.src = qrServices[currentServiceIndex]
+          img.style.width = '200px'
+          img.style.height = '200px'
+          img.style.borderRadius = '8px'
+          img.style.boxShadow = '0 2px 8px rgba(0, 0, 0, 0.1)'
+          img.style.background = 'white'
+          img.style.padding = '8px'
+          img.style.display = 'block'
+          img.style.margin = '0 auto'
+          
+          img.onload = () => {
+            console.log(`QR code generated successfully using service ${currentServiceIndex + 1}`)
+            placeholder.style.display = 'none'
+            downloadBtn.style.display = 'inline-block'
+            
+            // Insert image after placeholder
+            placeholder.parentNode.insertBefore(img, placeholder.nextSibling)
+            
+            // Update download function
+            downloadBtn.onclick = () => {
+              const link = document.createElement('a')
+              link.download = 'payment-qr-code.png'
+              link.href = img.src
+              link.click()
+            }
+          }
+          
+          img.onerror = () => {
+            console.log(`QR service ${currentServiceIndex + 1} failed, trying next...`)
+            currentServiceIndex++
+            setTimeout(tryNextService, 500) // Wait 500ms before trying next service
+          }
+        }
+        
+        // Start trying services
+        tryNextService()
+      }
+    </script>
   </head>
   <body>
     <div class="container">
@@ -45,6 +125,19 @@
             <button id="copyBtn">Copy Link</button>
             <button id="openBtn" class="primary">Open Payment Page</button>
           </div>
+          
+          <div class="qr-section">
+            <h3>QR Code for Mobile Access</h3>
+            <div class="qr-container">
+              <canvas id="qrCode" style="display: none;"></canvas>
+              <div id="qrPlaceholder" class="qr-placeholder">
+                <p>QR Code will appear here</p>
+              </div>
+            </div>
+            <div class="qr-actions">
+              <button id="downloadQrBtn" class="secondary" style="display: none;">Download QR Code</button>
+            </div>
+          </div>
         </div>
         <div id="errorMessage" class="error" style="display: none;"></div>
       </section>
@@ -84,6 +177,7 @@
           if (data.success) {
             document.getElementById('paymentLink').value = data.paymentLink
             document.getElementById('resultCard').style.display = 'block'
+            generateQRCode(data.paymentLink)
           } else {
             throw new Error(data.error || 'Failed to generate link')
           }
@@ -107,6 +201,21 @@
         if (link) {
           window.open(link, '_blank')
         }
+      })
+
+      // QR Code generation function - simplified version
+      function generateQRCode(paymentLink) {
+        console.log('Generating QR code for:', paymentLink)
+        generateQRCodeSimple(paymentLink)
+      }
+
+      // Download QR code as image
+      document.getElementById('downloadQrBtn').addEventListener('click', () => {
+        const canvas = document.getElementById('qrCode')
+        const link = document.createElement('a')
+        link.download = 'payment-qr-code.png'
+        link.href = canvas.toDataURL()
+        link.click()
       })
 
       // Auto-fill common values for testing

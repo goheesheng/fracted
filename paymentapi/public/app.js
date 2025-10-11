@@ -117,23 +117,31 @@ function updateAmountDisplay() {
   const tokenSymbol = TOKEN_ADDRESS_TO_SYMBOL[dstToken] || 'USDC'
   
   const usdAmount = formatAmountToUSD(amountWei, tokenSymbol)
+  
+  // Update amount display
   $('amountDisplay').textContent = usdAmount
   
-  // Hide details section - only show USD amount
-  $('amountDetails').textContent = ''
+  // Update amount details
+  $('amountDetails').textContent = `${amountWei} ${tokenSymbol} (smallest units)`
 }
 
 function updateDisplayNames() {
+  const merchant = $('merchant').value
   const dstEid = $('dstEid').value
   const dstToken = $('dstToken').value
+  const amount = $('amount').value
   
-  console.log('updateDisplayNames called with:', { dstEid, dstToken })
+  console.log('updateDisplayNames called with:', { merchant, dstEid, dstToken, amount })
   console.log('EID_TO_CHAIN:', EID_TO_CHAIN)
   console.log('TOKEN_ADDRESS_TO_SYMBOL:', TOKEN_ADDRESS_TO_SYMBOL)
+  
+  // Update merchant display
+  $('merchantDisplay').textContent = merchant || 'Loading...'
   
   // Update EID display - show friendly name but keep original value for processing
   const chainName = EID_TO_CHAIN[dstEid] || `EID ${dstEid}`
   console.log('Chain name for EID', dstEid, ':', chainName)
+  $('dstEidDisplay').textContent = chainName
   // Store original EID in a data attribute and show friendly name
   $('dstEid').setAttribute('data-original-eid', dstEid)
   $('dstEid').value = chainName
@@ -141,9 +149,13 @@ function updateDisplayNames() {
   // Update token display - show friendly name but keep original value for processing
   const tokenSymbol = TOKEN_ADDRESS_TO_SYMBOL[dstToken] || 'Unknown Token'
   console.log('Token symbol for address', dstToken, ':', tokenSymbol)
+  $('dstTokenDisplay').textContent = tokenSymbol
   // Store original token address in a data attribute and show friendly name
   $('dstToken').setAttribute('data-original-token', dstToken)
   $('dstToken').value = tokenSymbol
+  
+  // Update amount raw display
+  $('amountRawDisplay').textContent = amount || 'Loading...'
 }
 
 async function ensureNetwork(targetKey) {
@@ -195,11 +207,26 @@ async function loadConfigAndApply() {
   }
 }
 
+// Show loading state
+function setButtonLoading(loading) {
+  const payBtn = document.getElementById('payBtn')
+  
+  if (loading) {
+    payBtn.disabled = true
+    payBtn.textContent = 'Processing...'
+    payBtn.style.opacity = '0.7'
+  } else {
+    payBtn.disabled = false
+    payBtn.textContent = 'Pay'
+    payBtn.style.opacity = '1'
+  }
+}
+
 window.addEventListener('load', async () => {
   setFormFromQuery()
   await loadConfigAndApply()
 
-  // React to network changes if needed (no UI field now)
+  // React to network changes
   $('srcNetwork').addEventListener('change', () => {})
 
   $('connectBtn').addEventListener('click', async () => {
@@ -249,6 +276,8 @@ window.addEventListener('load', async () => {
 
   $('payBtn').addEventListener('click', async () => {
     try {
+      setButtonLoading(true)
+      
       const networkKey = $('srcNetwork').value
       await ensureNetwork(networkKey)
       if (!provider) {
@@ -333,8 +362,15 @@ window.addEventListener('load', async () => {
       log(`Tx: ${tx.hash}`)
       const rc = await tx.wait()
       log(`Confirmed in block ${rc.blockNumber}`)
+      
+      // Show success message
+      alert('Payment successful! Transaction confirmed.')
+      
     } catch (e) {
       log(`Pay error: ${e.message || e}`)
+      alert(`Payment failed: ${e.message || e}`)
+    } finally {
+      setButtonLoading(false)
     }
   })
 })
