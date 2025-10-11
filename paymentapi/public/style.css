@@ -362,6 +362,17 @@ button {
   background-clip: text;
   animation: titleShimmer 4s ease-in-out infinite;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.title-logo {
+  width: 120px;
+  height: auto;
+  vertical-align: middle;
+  flex-shrink: 0;
+  object-fit: contain;
 }
 
 @keyframes titleShimmer {
@@ -458,6 +469,10 @@ button {
   background-clip: text;
   animation: amountPulse 2s ease-in-out infinite;
   line-height: 1.2;
+}
+
+.amount-details {
+  display: none;
 }
 
 @keyframes amountPulse {
@@ -792,22 +807,21 @@ button {
 
 .option-group select {
   width: 100%;
-  background: transparent;
-  border: none;
-  border-radius: 0;
-  padding: 14px 0;
+  background: #1f2937;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 12px 16px;
   font-size: 16px;
   color: #f9fafb;
   transition: all 0.3s ease;
   box-shadow: none;
   backdrop-filter: none;
-  border-bottom: 2px solid rgba(147, 51, 234, 0.3);
 }
 
 .option-group select:focus {
   outline: none;
-  border-bottom-color: #a855f7;
-  box-shadow: none;
+  border-color: #a855f7;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
   transform: none;
 }
 
@@ -1011,35 +1025,368 @@ button {
     font-size: 28px;
   }
   
+  .title-logo {
+    width: 96px;
+    height: auto;
+  }
+  
   .amount-value {
     font-size: 40px;
   }
 }
 
-@media (max-width: 640px) {
-  .seller-header {
-    padding: 16px 20px;
+/* Mobile responsive design */
+@media (max-width: 768px) {
+  .payment-container {
+    flex-direction: column;
+    height: 100vh;
+    overflow-y: auto;
   }
   
-  .seller-content {
-    padding: 20px;
-    gap: 24px;
+  .seller-side {
+    flex: 0 0 50vh;
+    height: 50vh;
+    min-height: 50vh;
+  }
+  
+  .payment-side {
+    flex: 0 0 50vh;
+    height: 50vh;
+    min-height: 50vh;
+  }
+  
+  .payment-header {
+    padding: 20px 24px;
   }
   
   .payment-content {
-    padding: 24px 20px;
+    padding: 20px 24px;
+    max-width: none;
+  }
+  
+  .seller-content {
+    padding: 20px 24px;
   }
   
   .seller-title {
     font-size: 24px;
   }
   
+  .title-logo {
+    width: 84px;
+    height: auto;
+  }
+  
   .amount-value {
     font-size: 32px;
   }
   
+  .logo img {
+    width: 80px !important;
+    height: 80px !important;
+  }
+  
+  .info-grid {
+    grid-template-columns: 1fr;
+    gap: 16px;
+  }
+  
   .action-buttons {
     flex-direction: column;
+    gap: 12px;
+  }
+}
+
+@media (max-width: 640px) {
+  .seller-side {
+    flex: 0 0 45vh;
+    height: 45vh;
+    min-height: 45vh;
+  }
+  
+  .payment-side {
+    flex: 0 0 55vh;
+    height: 55vh;
+    min-height: 55vh;
+  }
+  
+  .seller-header {
+    padding: 16px 20px;
+  }
+  
+  .seller-content {
+    padding: 16px 20px;
+    gap: 20px;
+  }
+  
+  .payment-content {
+    padding: 16px 20px;
+  }
+  
+  .payment-header {
+    padding: 16px 20px;
+  }
+  
+  .seller-title {
+    font-size: 20px;
+  }
+  
+  .title-logo {
+    width: 72px;
+    height: auto;
+  }
+  
+  .amount-value {
+    font-size: 28px;
+  }
+  
+  .logo img {
+    width: 60px !important;
+    height: 60px !important;
+  }
+  
+  .action-buttons {
+    flex-direction: column;
+    gap: 10px;
+  }
+}
+
+/* Generator page styles */
+.generator-container {
+  width: 100vw;
+  height: 100vh;
+  margin: 0;
+  padding: 0;
+  background: #000000;
+  overflow-y: auto;
+  position: relative;
+}
+
+.generator-content {
+  padding: 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+  position: relative;
+  z-index: 2;
+}
+
+.generator-title {
+  font-size: 36px;
+  font-weight: 800;
+  color: #f3f4f6;
+  margin: 0 0 16px 0;
+  text-shadow: 0 0 30px rgba(168, 85, 247, 0.4);
+  background: linear-gradient(135deg, #f3f4f6 0%, #a855f7 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  animation: titleShimmer 4s ease-in-out infinite;
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.generator-subtitle {
+  color: #9ca3af;
+  font-size: 16px;
+  margin: 0 0 32px 0;
+  line-height: 1.5;
+}
+
+/* Generator card styles */
+.generator-container .card {
+  background: rgba(17, 24, 39, 0.8);
+  border: 1px solid rgba(75, 85, 99, 0.3);
+  border-radius: 16px;
+  padding: 24px;
+  margin-bottom: 24px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+}
+
+.generator-container .card h2 {
+  color: #f3f4f6;
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 20px 0;
+  text-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
+}
+
+.generator-container .card h3 {
+  color: #d1d5db;
+  font-size: 16px;
+  font-weight: 500;
+  margin: 16px 0 8px 0;
+}
+
+.generator-container label {
+  color: #d1d5db;
+  font-weight: 500;
+  margin-bottom: 8px;
+  display: block;
+}
+
+.generator-container input,
+.generator-container select {
+  background: rgba(31, 41, 55, 0.8);
+  border: 1px solid rgba(75, 85, 99, 0.5);
+  border-radius: 8px;
+  padding: 12px 16px;
+  color: #f3f4f6;
+  font-size: 14px;
+  width: 100%;
+  transition: all 0.2s ease;
+}
+
+.generator-container input:focus,
+.generator-container select:focus {
+  outline: none;
+  border-color: #a855f7;
+  box-shadow: 0 0 0 3px rgba(168, 85, 247, 0.1);
+}
+
+.generator-container .grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.generator-container .grid-2x2 {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  margin-bottom: 24px;
+}
+
+.generator-container .row {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.generator-container .primary {
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%);
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 4px 6px -1px rgba(124, 58, 237, 0.3);
+}
+
+.generator-container .primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 8px -1px rgba(124, 58, 237, 0.4);
+}
+
+.generator-container .secondary {
+  background: rgba(31, 41, 55, 0.8);
+  color: #d1d5db;
+  border: 1px solid rgba(75, 85, 99, 0.5);
+  border-radius: 8px;
+  padding: 12px 24px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.generator-container .secondary:hover {
+  background: rgba(55, 65, 81, 0.8);
+  border-color: #a855f7;
+}
+
+.generator-container .result {
+  background: rgba(17, 24, 39, 0.6);
+  border: 1px solid rgba(75, 85, 99, 0.3);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 20px;
+}
+
+.generator-container .result input {
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(75, 85, 99, 0.4);
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+.generator-container .token-list {
+  background: rgba(17, 24, 39, 0.4);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.generator-container .token-list ul {
+  list-style: none;
+  padding: 0;
+  margin: 8px 0;
+}
+
+.generator-container .token-list li {
+  color: #9ca3af;
+  margin: 4px 0;
+  font-size: 14px;
+}
+
+.generator-container .token-list code {
+  background: rgba(0, 0, 0, 0.3);
+  color: #a855f7;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+}
+
+.generator-container .error {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+  padding: 12px 16px;
+  border-radius: 8px;
+  margin-top: 16px;
+}
+
+/* QR section styles for generator */
+.generator-container .qr-section {
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid rgba(75, 85, 99, 0.3);
+}
+
+.generator-container .qr-section h3 {
+  color: #f3f4f6;
+  margin: 0 0 16px 0;
+  font-size: 18px;
+}
+
+.generator-container .qr-container {
+  text-align: center;
+  margin-bottom: 16px;
+  background: transparent;
+}
+
+.generator-container .qr-placeholder {
+  background: transparent;
+  border: 2px dashed rgba(75, 85, 99, 0.5);
+  border-radius: 12px;
+  padding: 40px 20px;
+  color: #9ca3af;
+}
+
+.generator-container .qr-actions {
+  text-align: center;
+}
+
+/* Responsive design for generator */
+@media (max-width: 768px) {
+  .generator-container .grid-2x2 {
+    grid-template-columns: 1fr;
+    gap: 16px;
   }
 }
 
