@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Monitoring Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <h1>Transaction Monitoring Dashboard</h1>
+      <div class="status" id="status">Loading...</div>
+    </header>
+
+    <main class="grid">
+      <section class="card kpis" aria-label="Overview">
+        <div class="kpi">
+          <div class="kpi-title">Total Inflow (Gross)</div>
+          <div class="kpi-value" id="kpi-inflow">$0</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-title">Total Outflow (Net)</div>
+          <div class="kpi-value" id="kpi-outflow">$0</div>
+        </div>
+      </section>
+
+      <section class="card list" aria-label="Merchants">
+        <div class="card-header">
+          <h2>Merchant Total Received</h2>
+          <span class="hint">Sorted by Net (desc)</span>
+        </div>
+        <div class="scroll" id="merchant-list"></div>
+        <div class="empty" id="merchant-empty" hidden>No data</div>
+      </section>
+
+      <section class="card list" aria-label="Payers">
+        <div class="card-header">
+          <h2>Payer Total Spent</h2>
+          <span class="hint">Sorted by Gross (desc)</span>
+        </div>
+        <div class="scroll" id="payer-list"></div>
+        <div class="empty" id="payer-empty" hidden>No data</div>
+      </section>
+
+      <section class="card list wide" aria-label="Transactions">
+        <div class="card-header">
+          <h2>Transactions</h2>
+          <div class="actions">
+            <button id="refresh-btn" title="Refresh now">Refresh</button>
+          </div>
+        </div>
+        <div class="scroll" id="ongoing-list"></div>
+        <div class="empty" id="ongoing-empty" hidden>No transactions</div>
+      </section>
+    </main>
+  </div>
+
+  <div class="modal" id="modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    <div class="modal-content" role="document">
+      <div class="modal-header">
+        <h3>Transaction Details</h3>
+        <button id="modal-close" aria-label="Close">×</button>
+      </div>
+      <pre class="modal-body" id="modal-body"></pre>
+    </div>
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
