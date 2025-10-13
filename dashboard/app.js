@@ -4,6 +4,7 @@
 
   const el = {
     status: document.getElementById('status'),
+    themeSwitch: document.getElementById('theme-switch'),
     inflow: document.getElementById('kpi-inflow'),
     outflow: document.getElementById('kpi-outflow'),
     merchantList: document.getElementById('merchant-list'),
@@ -22,6 +23,19 @@
   function formatMoney(num) {
     if (!isFinite(num)) return '$0';
     return '$' + Number(num).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+
+  function hueFromString(str) {
+    let h = 0;
+    for (let i = 0; i < str.length; i++) h = (h * 31 + str.charCodeAt(i)) >>> 0;
+    return h % 360;
+  }
+
+  function tokenPillHTML(symbol, chain) {
+    const s = (symbol || 'TOKEN').toUpperCase();
+    const symClass = s === 'USDC' ? 'usdc' : (s === 'USDT' ? 'usdt' : '');
+    const c = chain ? ` title="${chain}"` : '';
+    return `<span class="pill ${symClass}"${c}><span class="mono">${s}</span></span>`;
   }
 
   function parseList(data) {
@@ -83,18 +97,49 @@
     }
   }
 
+  // Token recognition map (extend as needed)
+  const TOKEN_MAP = {
+    // Base mainnet
+    '0x833589fcd6edb6e08f4c7c32d4f71b54b7cfb66e': { symbol: 'USDC', chain: 'Base' },
+    '0xd9aaec6eab5f9f0a7f0dd7c39c3f1b3aa1c5f6b9': { symbol: 'USDbC', chain: 'Base' },
+    // Base Sepolia
+    '0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d': { symbol: 'USDC', chain: 'Base Sepolia' },
+    // Arbitrum Sepolia (common test tokens; adjust if needed)
+    '0x9aa7fEc87CA69695Dd1f879567CcF49F3ba417E2': { symbol: 'USDT', chain: 'Arb Sepolia' },
+    '0x0f3a3d8e7c8b1e3b5f0b3d3c1a9f4f0a9e3b1c2d': { symbol: 'USDC', chain: 'Arb Sepolia' },
+  };
+
+  function getTokenInfo(addr) {
+    if (!addr) return null;
+    const k = String(addr).toLowerCase();
+    return TOKEN_MAP[k] || null;
+  }
+
+  function timeAgo(iso) {
+    const t = Date.parse(iso);
+    if (isNaN(t)) return '-';
+    const s = Math.floor((Date.now() - t) / 1000);
+    if (s < 60) return `${s}s ago`;
+    const m = Math.floor(s / 60);
+    if (m < 60) return `${m}m ago`;
+    const h = Math.floor(m / 60);
+    if (h < 24) return `${h}h ago`;
+    const d = Math.floor(h / 24);
+    return `${d} days ago`;
+  }
+
   function renderOngoing(list) {
     el.ongoingList.innerHTML = '';
 
     const head = document.createElement('div');
     head.className = 'tx-row tx-head';
     head.innerHTML = `
-      <div class="tx-cell bold">TxHash</div>
-      <div class="tx-cell bold">Merchant</div>
-      <div class="tx-cell bold">Payer</div>
-      <div class="tx-cell bold">Gross</div>
-      <div class="tx-cell bold hide-md">Net</div>
-      <div class="tx-cell bold hide-md">Status</div>
+      <div class="tx-cell bold">Identity</div>
+      <div class="tx-cell bold">Time</div>
+      <div class="tx-cell bold">Value</div>
+      <div class="tx-cell bold">Transactions</div>
+      <div class="tx-cell bold hide-md">Tokens</div>
+      <div class="tx-cell bold hide-md">Activity</div>
     `;
     el.ongoingList.appendChild(head);
 
@@ -105,15 +150,19 @@
     el.ongoingEmpty.hidden = true;
 
     for (const tx of list) {
+      const token = getTokenInfo(tx.DstToken) || getTokenInfo(tx.SrcToken);
+      const tokensHTML = token ? `<div class="tokens">${tokenPillHTML(token.symbol, token.chain)}</div>` : `<span class="badge badge-default">N/A</span>`;
+      const activity = `<span class="icon inflow"></span>Received ${formatMoney(Number(tx.NetAmount || 0)).replace('$','')} ${token ? token.symbol : ''} from ${short(tx.Payer)}`;
+      const hue = hueFromString(String(tx.Merchant || ''));
       const row = document.createElement('div');
       row.className = 'tx-row';
       row.innerHTML = `
-        <div class="tx-cell mono" title="${tx.TxHash}">${short(tx.TxHash)}</div>
-        <div class="tx-cell mono" title="${tx.Merchant}">${short(tx.Merchant)}</div>
-        <div class="tx-cell mono" title="${tx.Payer}">${short(tx.Payer)}</div>
-        <div class="tx-cell">${formatMoney(Number(tx.GrossAmount || 0))}</div>
-        <div class="tx-cell hide-md">${formatMoney(Number(tx.NetAmount || 0))}</div>
-        <div class="tx-cell hide-md">${statusBadgeHTML(tx.Status)}</div>
+        <div class="tx-cell" title="${tx.Merchant}"><span class="avatar" style="--h:${hue}"></span><span class="mono">${short(tx.Merchant)}</span></div>
+        <div class="tx-cell" title="${tx.Timestamp}">${timeAgo(tx.Timestamp)}</div>
+        <div class="tx-cell">${formatMoney(Number(tx.NetAmount || 0))}</div>
+        <div class="tx-cell">1</div>
+        <div class="tx-cell hide-md">${tokensHTML}</div>
+        <div class="tx-cell hide-md">${activity}</div>
       `;
       row.addEventListener('click', () => openModal(tx));
       el.ongoingList.appendChild(row);
@@ -143,6 +192,12 @@
   function scrollToBottom(container) {
     container.scrollTop = container.scrollHeight;
   }
+  function isNearTop(container, threshold = 24) {
+    return container.scrollTop <= threshold;
+  }
+  function scrollToTop(container) {
+    container.scrollTop = 0;
+  }
 
   function openModal(obj) {
     el.modalBody.textContent = JSON.stringify(obj, null, 2);
@@ -155,6 +210,25 @@
   el.modalBackdrop.addEventListener('click', closeModal);
   el.modalClose.addEventListener('click', closeModal);
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeModal(); });
+
+  // Theme toggling
+  function applyTheme(mode) {
+    const body = document.body;
+    if (mode === 'dark') body.classList.add('dark'); else body.classList.remove('dark');
+  }
+  function loadTheme() {
+    const saved = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const mode = saved || (prefersDark ? 'dark' : 'light');
+    applyTheme(mode);
+    if (el.themeSwitch) el.themeSwitch.checked = mode === 'dark';
+  }
+  function toggleTheme() {
+    const to = (document.body.classList.contains('dark') ? 'light' : 'dark');
+    applyTheme(to);
+    localStorage.setItem('theme', to);
+  }
+  if (el.themeSwitch) el.themeSwitch.addEventListener('change', toggleTheme);
 
   async function load() {
     const start = Date.now();
@@ -173,10 +247,10 @@
       const payerAgg = groupBy(list, 'Payer', 'GrossAmount');
       renderSimpleList(el.payerList, el.payerEmpty, payerAgg);
 
-      const stickToBottom = isNearBottom(el.ongoingList);
-      const allTx = [...list].sort((a, b) => (a.__ts || 0) - (b.__ts || 0));
+      const stickToTop = isNearTop(el.ongoingList);
+      const allTx = [...list].sort((a, b) => (b.__ts || 0) - (a.__ts || 0));
       renderOngoing(allTx);
-      if (stickToBottom) scrollToBottom(el.ongoingList);
+      if (stickToTop) scrollToTop(el.ongoingList);
 
       const ms = Date.now() - start;
       setStatus(`Updated • ${new Date().toLocaleTimeString()} • ${list.length} tx • ${ms}ms`);
@@ -209,6 +283,7 @@
 
   el.refreshBtn.addEventListener('click', () => { load(); });
 
+  loadTheme();
   load();
   setInterval(load, POLL_MS);
 })();
