@@ -9,7 +9,11 @@
 <body>
   <div id="app">
     <header class="app-header">
-      <h1>Transaction Monitoring Dashboard</h1>
+      <div class="brand">
+        <img src="logodark.png" alt="Company logo" class="logo light" />
+        <img src="logowhite.png" alt="Company logo" class="logo dark" />
+      </div>
+      <h1 class="page-title">Transaction Monitoring Dashboard</h1>
       <div class="header-actions">
         <div class="status" id="status">Loading...</div>
         <label class="theme-toggle" title="Toggle dark mode">
@@ -51,7 +55,10 @@
 
       <section class="card list wide" aria-label="Transactions">
         <div class="card-header">
-          <h2>Transactions</h2>
+          <div class="left-controls">
+            <h2>Transactions</h2>
+            <input class="search-input" id="search-input" type="text" placeholder="Search Identity (address)" aria-label="Search Identity" />
+          </div>
           <div class="actions">
             <button id="refresh-btn" title="Refresh now">Refresh</button>
           </div>

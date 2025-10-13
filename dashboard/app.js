@@ -5,6 +5,7 @@
   const el = {
     status: document.getElementById('status'),
     themeSwitch: document.getElementById('theme-switch'),
+    searchInput: document.getElementById('search-input'),
     inflow: document.getElementById('kpi-inflow'),
     outflow: document.getElementById('kpi-outflow'),
     merchantList: document.getElementById('merchant-list'),
@@ -20,9 +21,17 @@
     modalBody: document.getElementById('modal-body'),
   };
 
+  let currentList = [];
+
   function formatMoney(num) {
     if (!isFinite(num)) return '$0';
     return '$' + Number(num).toLocaleString(undefined, { maximumFractionDigits: 2 });
+  }
+
+  function getSearchFiltered(list) {
+    const q = (el.searchInput && el.searchInput.value || '').trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(tx => String(tx.Merchant || '').toLowerCase().includes(q));
   }
 
   function hueFromString(str) {
@@ -249,7 +258,8 @@
 
       const stickToTop = isNearTop(el.ongoingList);
       const allTx = [...list].sort((a, b) => (b.__ts || 0) - (a.__ts || 0));
-      renderOngoing(allTx);
+      currentList = allTx;
+      renderOngoing(getSearchFiltered(allTx));
       if (stickToTop) scrollToTop(el.ongoingList);
 
       const ms = Date.now() - start;
@@ -282,6 +292,16 @@
   }
 
   el.refreshBtn.addEventListener('click', () => { load(); });
+
+  function debounce(fn, wait) {
+    let t; return function(...args){ clearTimeout(t); t = setTimeout(() => fn.apply(this, args), wait); };
+  }
+  const onSearch = debounce(() => {
+    const stickToTop = isNearTop(el.ongoingList);
+    renderOngoing(getSearchFiltered(currentList));
+    if (stickToTop) scrollToTop(el.ongoingList);
+  }, 200);
+  if (el.searchInput) el.searchInput.addEventListener('input', onSearch);
 
   loadTheme();
   load();
