@@ -1,8 +1,8 @@
 # 生产环境
-https://demo.fracted.xyz/generator.html
+https://demo.fracted.xyz
 
 # 本地开发
-http://localhost:8080/generator.html
+http://localhost:8080/
 
 生产环境quick-link生成：
 https://demo.fracted.xyz/?merchant=0xB7aa464b19037CF3dB7F723504dFafE7b63aAb84&dstEid=40231&dstToken=0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d&amount=1000000

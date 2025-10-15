@@ -146,8 +146,13 @@ app.get('/initiatebyuser', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'initiate.html'))
 })
 
-// Root serves the payment page; parameters are read by client from the query string
+// Root serves the generator page
 app.get('/', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'generator.html'))
+})
+
+// Payment page route
+app.get('/payment', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'))
 })
 
