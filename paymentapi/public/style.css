@@ -1049,19 +1049,21 @@ button {
   /* 左侧信息部分在手机端显示在上方 */
   .seller-side {
     order: 1;
-    flex: 0 0 auto;
-    min-height: auto;
+    flex: 0 0 auto !important;
+    min-height: auto !important;
     height: auto !important;
-    overflow: visible;
+    max-height: none !important;
+    overflow: visible !important;
   }
   
   /* 右侧支付部分在手机端显示在下方 */
   .payment-side {
     order: 2;
-    flex: 0 0 auto;
-    min-height: auto;
+    flex: 0 0 auto !important;
+    min-height: auto !important;
     height: auto !important;
-    overflow: visible;
+    max-height: none !important;
+    overflow: visible !important;
   }
   
   .payment-header {
@@ -1071,13 +1073,20 @@ button {
   .payment-content {
     padding: 20px 24px;
     max-width: none;
+    min-height: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
   
   .seller-content {
     padding: 20px 24px;
     justify-content: flex-start;
     gap: 16px;
-    min-height: auto;
+    min-height: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
   
   .seller-title {
@@ -1144,28 +1153,38 @@ button {
   /* 小屏幕设备上保持相同的布局顺序 */
   .seller-side {
     order: 1;
-    flex: 0 0 auto;
-    min-height: auto;
-    height: auto;
+    flex: 0 0 auto !important;
+    min-height: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
   
   .payment-side {
     order: 2;
-    flex: 0 0 auto;
-    min-height: auto;
-    height: auto;
+    flex: 0 0 auto !important;
+    min-height: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
   
   .seller-content {
     padding: 16px 20px;
     gap: 16px;
     justify-content: flex-start;
-    min-height: auto;
+    min-height: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
   
   .payment-content {
     padding: 16px 20px 60px 20px;
-    min-height: auto;
+    min-height: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
   
   .action-buttons {
@@ -1224,22 +1243,34 @@ button {
 /* 超小屏幕设备优化 */
 @media (max-width: 480px) {
   .seller-side {
-    min-height: auto;
+    min-height: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
   
   .payment-side {
-    min-height: auto;
+    min-height: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
   
   .seller-content {
     padding: 12px 16px;
     gap: 12px;
-    min-height: auto;
+    min-height: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
   
   .payment-content {
     padding: 12px 16px 60px 16px;
-    min-height: auto;
+    min-height: auto !important;
+    height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
   }
   
   .action-buttons {
