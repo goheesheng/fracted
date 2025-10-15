@@ -23,7 +23,9 @@ app.get('/api/payouts', async (req, res) => {
 });
 
 // Root -> index.html
-app.get('/', (req, res) => {
+app.use('/dashboard', express.static(staticDir));
+
+app.get('/dashboard/*', (req, res) => {
   res.sendFile(path.join(staticDir, 'index.html'));
 });
 
