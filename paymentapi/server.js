@@ -119,7 +119,7 @@ app.get('/generate-link', (req, res) => {
     
     // Generate the payment link
     const baseUrl = 'https://demo.fracted.xyz'
-    const paymentLink = `${baseUrl}/?merchant=${merchant}&dstEid=${dstEid}&dstToken=${dstToken}&amount=${amount}`
+    const paymentLink = `${baseUrl}/payment/?merchant=${merchant}&dstEid=${dstEid}&dstToken=${dstToken}&amount=${amount}`
     
     res.json({
       success: true,
