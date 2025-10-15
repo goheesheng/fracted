@@ -6,7 +6,7 @@ const MERCHANT_ADDRESS = '0xB7aa464b19037CF3dB7F723504dFafE7b63aAb84'  // Your m
 const DESTINATION_EID = 40231  // Destination chain ID (40245=Base Sepolia, 40231=Arbitrum Sepolia)
 const DESTINATION_TOKEN = '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d'  // Destination token address
 const AMOUNT = 1000000  // Payment amount (smallest units)
-const SERVER_URL = 'http://localhost:8080'  // Server URL
+const SERVER_URL = 'http://85.211.176.154:8888'  // Server URL
 
 // 🚀 Generate payment link
 function generateLink() {

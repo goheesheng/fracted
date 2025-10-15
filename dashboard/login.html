@@ -1,0 +1,278 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Merchant Login - Monitoring Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .login-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .login-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: var(--shadow-strong);
+      text-align: center;
+    }
+    
+    .login-header {
+      margin-bottom: 24px;
+    }
+    
+    .login-header h1 {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text);
+      margin: 0 0 8px 0;
+      letter-spacing: 0.3px;
+    }
+    
+    .login-header p {
+      color: var(--muted);
+      font-size: 14px;
+      margin: 0;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--text);
+      font-size: 14px;
+      transition: all 0.15s ease;
+      outline: none;
+    }
+    
+    .form-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    
+    .form-input::placeholder {
+      color: var(--muted);
+    }
+    
+    .login-btn {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      margin-bottom: 16px;
+    }
+    
+    .login-btn:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+    
+    .login-btn:disabled {
+      background: var(--muted);
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .error-message {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #dc2626;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    
+    .back-link {
+      color: var(--muted);
+      font-size: 13px;
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+    
+    .back-link:hover {
+      color: var(--accent);
+    }
+    
+    .address-hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    
+    /* Dark mode adjustments */
+    body.dark .form-input {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+    
+    body.dark .form-input:focus {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25);
+    }
+    
+    body.dark .error-message {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <img src="logodark.png" alt="Company logo" class="logo light" style="height: 48px; margin-bottom: 16px;" />
+        <img src="logowhite.png" alt="Company logo" class="logo dark" style="height: 48px; margin-bottom: 16px;" />
+        <h1>Merchant Login</h1>
+        <p>Enter your merchant address to access your dashboard</p>
+      </div>
+      
+      <div class="error-message" id="error-message"></div>
+      
+      <form id="login-form">
+        <div class="form-group">
+          <label for="merchant-address">Merchant Address</label>
+          <input 
+            type="text" 
+            id="merchant-address" 
+            class="form-input" 
+            placeholder="0x..." 
+            required 
+            autocomplete="off"
+          />
+          <div class="address-hint">Enter your Ethereum wallet address (0x...)</div>
+        </div>
+        
+        <button type="submit" class="login-btn" id="login-btn">
+          Access Dashboard
+        </button>
+      </form>
+      
+      <a href="index.html" class="back-link">← Back to Admin Dashboard</a>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const form = document.getElementById('login-form');
+      const addressInput = document.getElementById('merchant-address');
+      const loginBtn = document.getElementById('login-btn');
+      const errorMessage = document.getElementById('error-message');
+      
+      // Theme handling
+      function loadTheme() {
+        const saved = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const mode = saved || (prefersDark ? 'dark' : 'light');
+        if (mode === 'dark') {
+          document.body.classList.add('dark');
+        } else {
+          document.body.classList.remove('dark');
+        }
+      }
+      
+      function validateAddress(address) {
+        return /^0x[a-fA-F0-9]{40}$/.test(address);
+      }
+      
+      function showError(message) {
+        errorMessage.textContent = message;
+        errorMessage.style.display = 'block';
+        setTimeout(() => {
+          errorMessage.style.display = 'none';
+        }, 5000);
+      }
+      
+      function setLoading(loading) {
+        loginBtn.disabled = loading;
+        loginBtn.textContent = loading ? 'Verifying...' : 'Access Dashboard';
+      }
+      
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const address = addressInput.value.trim();
+        
+        if (!address) {
+          showError('Please enter your merchant address');
+          return;
+        }
+        
+        if (!validateAddress(address)) {
+          showError('Please enter a valid Ethereum address (0x...)');
+          return;
+        }
+        
+        setLoading(true);
+        
+        try {
+          // Check if merchant exists by making a test API call
+          const response = await fetch(`/api/merchant/${address.toLowerCase()}/payouts`, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json'
+            }
+          });
+          
+          if (response.ok) {
+            // Merchant exists, redirect to dashboard
+            localStorage.setItem('merchantAddress', address.toLowerCase());
+            window.location.href = `merchant-dashboard.html?address=${encodeURIComponent(address.toLowerCase())}`;
+          } else if (response.status === 404) {
+            showError('Merchant address not found. Please check your address or contact support.');
+          } else {
+            showError('Unable to verify merchant address. Please try again.');
+          }
+        } catch (error) {
+          console.error('Login error:', error);
+          showError('Connection error. Please check your internet connection and try again.');
+        } finally {
+          setLoading(false);
+        }
+      });
+      
+      // Auto-format address input
+      addressInput.addEventListener('input', (e) => {
+        let value = e.target.value;
+        if (value && !value.startsWith('0x')) {
+          value = '0x' + value;
+        }
+        e.target.value = value;
+      });
+      
+      loadTheme();
+    })();
+  </script>
+</body>
+</html>

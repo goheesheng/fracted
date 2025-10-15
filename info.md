@@ -1,5 +1,22 @@
-
+# 本地
 http://localhost:8080/generator.html
+
+#服务器
+http://85.211.176.154:8888/generator.html
+
+本地quick-link生成：
+http://localhost:8080/?merchant=0xB7aa464b19037CF3dB7F723504dFafE7b63aAb84&dstEid=40231&dstToken=0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d&amount=1000000
+
+服务器quick-link生成：
+
+
+
+dashboard界面
+http://localhost:8081
+http://localhost:8081/test-merchant.html (测试页面)
+http://localhost:8081/login.html 
+
+
 
 Deployed contract: MyOApp, network: arbitrum-sepolia, address: 0x9E3737436CD46a8ccF81a6720977081D5667f57C
 Deployed contract: MyOApp, network: base-sepolia, address: 0x5C5254f25C24eC1dFb612067AB6CbD15E6430071

@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Merchant Dashboard - Transaction Monitoring</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .merchant-info {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: var(--shadow);
+    }
+    
+    .merchant-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 12px;
+    }
+    
+    .merchant-address {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      font-size: 14px;
+      color: var(--text);
+      font-weight: 600;
+    }
+    
+    .logout-btn {
+      background: rgba(239, 68, 68, 0.1);
+      color: #dc2626;
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 8px;
+      padding: 6px 12px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    
+    .logout-btn:hover {
+      background: rgba(239, 68, 68, 0.15);
+      transform: translateY(-1px);
+    }
+    
+    .merchant-stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+      gap: 12px;
+    }
+    
+    .stat-item {
+      text-align: center;
+    }
+    
+    .stat-label {
+      font-size: 11px;
+      color: var(--muted);
+      margin-bottom: 4px;
+    }
+    
+    .stat-value {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--text);
+    }
+    
+    .no-data-message {
+      text-align: center;
+      padding: 40px 20px;
+      color: var(--muted);
+    }
+    
+    .no-data-message h3 {
+      font-size: 18px;
+      margin: 0 0 8px 0;
+      color: var(--text);
+    }
+    
+    .no-data-message p {
+      font-size: 14px;
+      margin: 0;
+    }
+    
+    /* Dark mode adjustments */
+    body.dark .logout-btn {
+      background: rgba(239, 68, 68, 0.15);
+      color: #fca5a5;
+      border-color: rgba(239, 68, 68, 0.35);
+    }
+    
+    body.dark .logout-btn:hover {
+      background: rgba(239, 68, 68, 0.25);
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <header class="app-header">
+      <div class="brand">
+        <img src="logodark.png" alt="Company logo" class="logo light" />
+        <img src="logowhite.png" alt="Company logo" class="logo dark" />
+      </div>
+      <h1 class="page-title">Merchant Dashboard</h1>
+      <div class="header-actions">
+        <div class="status" id="status">Loading...</div>
+        <label class="theme-toggle" title="Toggle dark mode">
+          <input type="checkbox" id="theme-switch" />
+          <span>Dark</span>
+        </label>
+      </div>
+    </header>
+
+    <!-- Merchant Info Card -->
+    <div class="merchant-info" id="merchant-info" style="display: none;">
+      <div class="merchant-header">
+        <div>
+          <div style="font-size: 12px; color: var(--muted); margin-bottom: 4px;">Merchant Address</div>
+          <div class="merchant-address" id="merchant-address-display"></div>
+        </div>
+        <button class="logout-btn" id="logout-btn">Logout</button>
+      </div>
+      <div class="merchant-stats">
+        <div class="stat-item">
+          <div class="stat-label">Total Transactions</div>
+          <div class="stat-value" id="total-transactions">0</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Total Received</div>
+          <div class="stat-value" id="total-received">$0</div>
+        </div>
+        <div class="stat-item">
+          <div class="stat-label">Last Activity</div>
+          <div class="stat-value" id="last-activity">-</div>
+        </div>
+      </div>
+    </div>
+
+    <main class="grid" id="main-content" style="display: none;">
+      <section class="card kpis" aria-label="Overview">
+        <div class="kpi">
+          <div class="kpi-title">Total Inflow (Gross)</div>
+          <div class="kpi-value" id="kpi-inflow">$0</div>
+        </div>
+        <div class="kpi">
+          <div class="kpi-title">Total Outflow (Net)</div>
+          <div class="kpi-value" id="kpi-outflow">$0</div>
+        </div>
+      </section>
+
+      <section class="card list" aria-label="Recent Transactions">
+        <div class="card-header">
+          <h2>Recent Transactions</h2>
+          <span class="hint">Your payment history</span>
+        </div>
+        <div class="scroll" id="transaction-list"></div>
+        <div class="empty" id="transaction-empty" hidden>No transactions found</div>
+      </section>
+
+      <section class="card list" aria-label="Token Summary">
+        <div class="card-header">
+          <h2>Token Summary</h2>
+          <span class="hint">By token type</span>
+        </div>
+        <div class="scroll" id="token-list"></div>
+        <div class="empty" id="token-empty" hidden>No token data</div>
+      </section>
+
+      <section class="card list wide" aria-label="All Transactions">
+        <div class="card-header">
+          <div class="left-controls">
+            <h2>All Transactions</h2>
+            <input class="search-input" id="search-input" type="text" placeholder="Search by payer address" aria-label="Search Transactions" />
+          </div>
+          <div class="actions">
+            <button id="refresh-btn" title="Refresh now">Refresh</button>
+          </div>
+        </div>
+        <div class="scroll" id="ongoing-list"></div>
+        <div class="empty" id="ongoing-empty" hidden>No transactions</div>
+      </section>
+    </main>
+
+    <!-- No Data Message -->
+    <div class="no-data-message" id="no-data-message" style="display: none;">
+      <h3>No Transaction Data</h3>
+      <p>No transactions found for this merchant address. Transactions will appear here once payments are received.</p>
+    </div>
+  </div>
+
+  <div class="modal" id="modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="modal-backdrop"></div>
+    <div class="modal-content" role="document">
+      <div class="modal-header">
+        <h3>Transaction Details</h3>
+        <button id="modal-close" aria-label="Close">×</button>
+      </div>
+      <pre class="modal-body" id="modal-body"></pre>
+    </div>
+  </div>
+
+  <script src="merchant-app.js"></script>
+</body>
+</html>
