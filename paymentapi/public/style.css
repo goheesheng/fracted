@@ -1084,25 +1084,25 @@ button {
 
 /* Simple dashboard link styles */
 .dashboard-link {
-  color: #f9fafb !important;
+  color: #f9fafb;
   font-size: 18px;
   font-weight: 500;
   cursor: pointer;
   text-decoration: none;
   transition: color 0.3s ease;
   margin-left: 16px;
-  -webkit-text-fill-color: #f9fafb !important;
-  background: none !important;
-  -webkit-background-clip: unset !important;
-  background-clip: unset !important;
-  text-shadow: none !important;
-  animation: none !important;
+  -webkit-text-fill-color: #f9fafb;
+  background: none;
+  -webkit-background-clip: unset;
+  background-clip: unset;
+  text-shadow: none;
+  animation: none;
 }
 
 .dashboard-link:hover {
-  color: #a855f7 !important;
+  color: #c084fc;
   text-decoration: underline;
-  -webkit-text-fill-color: #a855f7 !important;
+  -webkit-text-fill-color: #c084fc;
 }
 
 .generator-subtitle {
@@ -1311,8 +1311,8 @@ button {
   .dashboard-link {
     font-size: 16px;
     margin-left: 12px;
-    color: #f9fafb !important;
-    -webkit-text-fill-color: #f9fafb !important;
+    color: #f9fafb;
+    -webkit-text-fill-color: #f9fafb;
   }
 }
 
