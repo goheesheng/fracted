@@ -226,20 +226,108 @@ window.addEventListener('load', async () => {
   setFormFromQuery()
   await loadConfigAndApply()
 
+  // Check MetaMask status on page load
+  function checkMetaMaskStatus() {
+    if (isMobile()) {
+      if (!isMetaMaskInstalled()) {
+        $('walletInfo').textContent = 'Tap to open MetaMask app'
+        log('Mobile detected without MetaMask extension')
+      } else {
+        $('walletInfo').textContent = 'MetaMask browser extension detected'
+        log('Mobile detected with MetaMask extension')
+      }
+    } else {
+      if (!isMetaMaskInstalled()) {
+        $('walletInfo').textContent = 'MetaMask not found. Please install MetaMask extension.'
+        log('Desktop without MetaMask extension')
+      } else {
+        $('walletInfo').textContent = 'MetaMask detected. Click to connect.'
+        log('Desktop with MetaMask extension')
+      }
+    }
+  }
+
+  // Initialize MetaMask status check
+  checkMetaMaskStatus()
+
   // React to network changes
   $('srcNetwork').addEventListener('change', () => {})
 
+  // Mobile detection function
+  function isMobile() {
+    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  }
+
+  // Check if MetaMask is installed
+  function isMetaMaskInstalled() {
+    return typeof window.ethereum !== 'undefined' && window.ethereum.isMetaMask
+  }
+
+  // Open MetaMask app on mobile
+  function openMetaMaskApp() {
+    const currentUrl = window.location.href
+    const metamaskUrl = 'metamask://dapp/' + window.location.host + window.location.pathname + window.location.search
+    const metamaskUniversalUrl = 'https://metamask.app.link/dapp/' + window.location.host + window.location.pathname + window.location.search
+    
+    log('Attempting to open MetaMask app...')
+    log('MetaMask URL: ' + metamaskUrl)
+    log('Universal URL: ' + metamaskUniversalUrl)
+    
+    // Try to open MetaMask app directly
+    const iframe = document.createElement('iframe')
+    iframe.style.display = 'none'
+    iframe.src = metamaskUrl
+    document.body.appendChild(iframe)
+    
+    // Fallback: open universal link after a short delay
+    setTimeout(() => {
+      document.body.removeChild(iframe)
+      window.open(metamaskUniversalUrl, '_blank')
+    }, 2000)
+  }
+
   $('connectBtn').addEventListener('click', async () => {
     try {
-      if (!window.ethereum) throw new Error('MetaMask not found')
+      // Check if we're on mobile
+      if (isMobile()) {
+        if (!isMetaMaskInstalled()) {
+          log('Mobile detected, opening MetaMask app...')
+          $('walletInfo').textContent = 'Opening MetaMask app...'
+          openMetaMaskApp()
+          return
+        } else {
+          log('Mobile detected with MetaMask browser extension')
+        }
+      }
+
+      // Desktop or MetaMask already available
+      if (!window.ethereum) {
+        if (isMobile()) {
+          log('MetaMask not found on mobile, opening app...')
+          $('walletInfo').textContent = 'Opening MetaMask app...'
+          openMetaMaskApp()
+          return
+        } else {
+          throw new Error('MetaMask not found. Please install MetaMask extension.')
+        }
+      }
+      
+      log('Requesting account access...')
+      $('walletInfo').textContent = 'Connecting...'
+      
       await window.ethereum.request({ method: 'eth_requestAccounts' })
       provider = new ethers.providers.Web3Provider(window.ethereum)
       signer = provider.getSigner()
       const addr = await signer.getAddress()
-      $('walletInfo').textContent = `Connected: ${addr}`
-      log('Wallet connected')
+      $('walletInfo').textContent = `Connected: ${addr.slice(0, 6)}...${addr.slice(-4)}`
+      log('Wallet connected successfully')
     } catch (e) {
       log(`Connect error: ${e.message || e}`)
+      if (e.code === 4001) {
+        $('walletInfo').textContent = 'Connection rejected by user'
+      } else {
+        $('walletInfo').textContent = `Error: ${e.message || e}`
+      }
     }
   })
 
