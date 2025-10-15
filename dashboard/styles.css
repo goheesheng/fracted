@@ -32,20 +32,7 @@ body {
 #app { max-width: 1440px; margin: 0 auto; padding: 20px; }
 
 .app-header { position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; margin-bottom: 16px; }
-.app-header h1, .page-title { 
-  color: #f3f4f6; 
-  font-size: 22px; 
-  margin: 0; 
-  letter-spacing: .3px; 
-  font-weight: 900; 
-  text-align: center; 
-  text-shadow: 0 0 30px rgba(168, 85, 247, 0.4);
-  background: linear-gradient(135deg, #f3f4f6 0%, #a855f7 100%);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: titleShimmer 4s ease-in-out infinite;
-}
+.app-header h1, .page-title { color: var(--text); font-size: 22px; margin: 0; letter-spacing: .3px; font-weight: 900; text-align: center; }
 .page-title { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; pointer-events: none; z-index: 0; }
 .brand { display:flex; align-items:center; gap:8px; }
 .brand { justify-self: start; }
@@ -55,12 +42,6 @@ body {
 body.dark .logo.light { display: none; }
 body.dark .logo.dark { display: inline-block; }
 .status { color: var(--muted); font-size: 12px; }
-
-/* Title shimmer animation */
-@keyframes titleShimmer {
-  0%, 100% { background-position: 0% 50%; }
-  50% { background-position: 100% 50%; }
-}
 
 .header-actions { display:flex; align-items:center; gap:12px; }
 .theme-toggle { display:flex; align-items:center; gap:6px; font-size:12px; color: var(--muted); user-select:none; }
