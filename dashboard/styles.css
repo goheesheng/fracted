@@ -32,7 +32,7 @@ body {
 #app { max-width: 1440px; margin: 0 auto; padding: 20px; }
 
 .app-header { position: relative; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: 12px; margin-bottom: 16px; }
-.app-header h1, .page-title { color: #c084fc; font-size: 22px; margin: 0; letter-spacing: .3px; font-weight: 900; text-align: center; }
+.app-header h1, .page-title { color: var(--text); font-size: 22px; margin: 0; letter-spacing: .3px; font-weight: 900; text-align: center; }
 .page-title { position: absolute; left: 50%; transform: translateX(-50%); white-space: nowrap; pointer-events: none; z-index: 0; }
 .brand { display:flex; align-items:center; gap:8px; }
 .brand { justify-self: start; }
