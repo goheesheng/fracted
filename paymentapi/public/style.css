@@ -1084,14 +1084,14 @@ button {
 
 /* Simple dashboard link styles */
 .dashboard-link {
-  color: #f9fafb;
-  font-size: 18px;
-  font-weight: 500;
+  color: #ffffff;
+  font-size: 14px;
+  font-weight: 400;
   cursor: pointer;
   text-decoration: none;
   transition: color 0.3s ease;
   margin-left: 16px;
-  -webkit-text-fill-color: #f9fafb;
+  -webkit-text-fill-color: #ffffff;
   background: none;
   -webkit-background-clip: unset;
   background-clip: unset;
@@ -1100,9 +1100,9 @@ button {
 }
 
 .dashboard-link:hover {
-  color: #c084fc;
+  color: #a855f7;
   text-decoration: underline;
-  -webkit-text-fill-color: #c084fc;
+  -webkit-text-fill-color: #a855f7;
 }
 
 .generator-subtitle {
@@ -1309,10 +1309,10 @@ button {
   
   /* Dashboard link mobile styles for generator */
   .dashboard-link {
-    font-size: 16px;
+    font-size: 13px;
     margin-left: 12px;
-    color: #f9fafb;
-    -webkit-text-fill-color: #f9fafb;
+    color: #ffffff;
+    -webkit-text-fill-color: #ffffff;
   }
 }
 
