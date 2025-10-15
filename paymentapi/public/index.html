@@ -208,6 +208,7 @@
         <div class="title-section">
           <h1 class="generator-title">
             <img src="/logo.png" alt="Fracted" class="title-logo" />
+            <span id="dashboardBtn" class="dashboard-link">Dashboard</span>
           </h1>
         </div>
 
@@ -361,6 +362,17 @@
       document.getElementById('merchant').value = ''
       document.getElementById('dstToken').value = ''
       document.getElementById('amount').value = ''
+
+      // Dashboard button click handler
+      const dashboardBtn = document.getElementById('dashboardBtn')
+      if (dashboardBtn) {
+        dashboardBtn.addEventListener('click', function() {
+          // Open dashboard in new tab
+          const dashboardUrl = 'http://localhost:8081/merchant-dashboard.html'
+          window.open(dashboardUrl, '_blank')
+          console.log('Opening dashboard...')
+        })
+      }
     </script>
   </body>
 </html>
