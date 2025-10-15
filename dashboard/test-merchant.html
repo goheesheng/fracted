@@ -95,7 +95,7 @@
       
       try {
         const testAddress = '0xb7aa464b19037cf3db7f723504dfafe7b63aab84';
-        const response = await fetch(`http://localhost:8081/api/merchant/${testAddress}/payouts`);
+        const response = await fetch(`http://localhost:8081/dashboard/api/merchant/${testAddress}/payouts`);
         const data = await response.json();
         
         if (response.ok) {

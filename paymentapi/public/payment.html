@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Fracted Payment</title>
+    <link rel="stylesheet" href="/style.css" />
+    <script src="https://cdn.jsdelivr.net/npm/ethers@5.7.2/dist/ethers.umd.min.js"></script>
+  </head>
+  <body>
+    <div class="payment-container generator-container">
+      <!-- Left Side - Seller Information (Dark Theme) -->
+      <div class="seller-side">
+        <!-- Floating particles -->
+        <div class="particles">
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+          <div class="particle"></div>
+        </div>
+        
+
+          <div class="seller-content">
+            <div class="title-section">
+              <h1 class="seller-title">
+                <img src="/logo.png" alt="Fracted" class="title-logo" />
+                Payment
+              </h1>
+            </div>
+
+          <!-- Payment Amount Display -->
+          <div class="amount-display">
+            <h2>Payment Amount</h2>
+            <div class="amount-value" id="amountDisplay">$0.00</div>
+            <div class="amount-details" id="amountDetails">Loading...</div>
+          </div>
+
+          <div class="merchant-info">
+            <h2>Merchant Order</h2>
+            <div class="info-grid">
+              <div class="info-item">
+                <label>Merchant Address</label>
+                <div class="display-name" id="merchantDisplay">Loading...</div>
+              </div>
+              <div class="info-item">
+                <label>Destination Chain</label>
+                <div class="display-name" id="dstEidDisplay">Loading...</div>
+              </div>
+              <div class="info-item">
+                <label>Destination Token</label>
+                <div class="display-name" id="dstTokenDisplay">Loading...</div>
+              </div>
+              <div class="info-item">
+                <label>Amount (smallest units)</label>
+                <div class="display-name" id="amountRawDisplay">Loading...</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Right Side - Payment Options (Light Theme) -->
+      <div class="payment-side">
+        <!-- Floating particles for right side -->
+        <div class="particles-right">
+          <div class="particle-right"></div>
+          <div class="particle-right"></div>
+          <div class="particle-right"></div>
+          <div class="particle-right"></div>
+        </div>
+        
+        <div class="payment-header">
+          <div class="logo">
+            <img src="/logo.png" alt="Fracted Logo" width="120" height="120" />
+          </div>
+        </div>
+        
+        <div class="payment-content">
+          <h2>Your Payment</h2>
+          
+          <div class="payment-options">
+            <div class="option-group">
+              <label>Source Network</label>
+              <select id="srcNetwork">
+                <option value="arbitrum-sepolia">Arbitrum Sepolia</option>
+                <option value="base-sepolia">Base Sepolia</option>
+              </select>
+            </div>
+            
+            <div class="option-group">
+              <label>Source Token</label>
+              <select id="srcTokenSelect">
+                <option value="USDT">USDT</option>
+                <option value="USDC">USDC</option>
+                <option value="XUSD">XUSD</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="wallet-section">
+            <button id="connectBtn" class="wallet-btn">Connect Wallet</button>
+            <div id="walletInfo" class="wallet-info"></div>
+          </div>
+
+          <div class="action-buttons">
+            <button id="approveBtn" class="action-btn secondary">Approve Source Token</button>
+            <button id="payBtn" class="action-btn primary">Pay</button>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <!-- Hidden form fields for backend processing -->
+    <div style="display: none;">
+      <input id="merchant" type="text" />
+      <input id="dstEid" type="text" />
+      <input id="dstToken" type="text" />
+      <input id="amount" type="text" />
+    </div>
+
+    <!-- Log area (hidden by default) -->
+    <pre id="log" style="display: none;"></pre>
+
+    <script src="/app.js"></script>
+  </body>
+</html>

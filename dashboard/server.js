@@ -11,7 +11,7 @@ app.use(express.static(staticDir));
 
 // Proxy API to avoid CORS and keep the frontend simple
 const UPSTREAM = process.env.UPSTREAM_PAYOUTS || 'http://85.211.176.154:8080/payouts';
-app.get('/api/payouts', async (req, res) => {
+app.get('/dashboard/api/payouts', async (req, res) => {
   try {
     const response = await axios.get(UPSTREAM, { timeout: 10000 });
     res.set('Cache-Control', 'no-store');
@@ -30,17 +30,17 @@ app.get('/dashboard/*', (req, res) => {
 });
 
 // Login page
-app.get('/login.html', (req, res) => {
+app.get('/dashboard/login.html', (req, res) => {
   res.sendFile(path.join(staticDir, 'login.html'));
 });
 
 // Merchant dashboard page
-app.get('/merchant-dashboard.html', (req, res) => {
+app.get('/dashboard/merchant-dashboard.html', (req, res) => {
   res.sendFile(path.join(staticDir, 'merchant-dashboard.html'));
 });
 
 // Merchant-specific API endpoint
-app.get('/api/merchant/:address/payouts', async (req, res) => {
+app.get('/dashboard/api/merchant/:address/payouts', async (req, res) => {
   try {
     const merchantAddress = req.params.address.toLowerCase();
     const response = await axios.get(UPSTREAM, { timeout: 10000 });
@@ -75,8 +75,8 @@ app.get('/api/merchant/:address/payouts', async (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`[dashboard] Server running on http://127.0.0.1:${PORT}`);
+  console.log(`[dashboard] Server running on http://127.0.0.1:${PORT}/dashboard`);
   console.log(`[dashboard] Static dir: ${staticDir}`);
-  console.log(`[dashboard] Proxy /api/payouts -> ${UPSTREAM}`);
-  console.log(`[dashboard] Merchant API: /api/merchant/:address/payouts`);
+  console.log(`[dashboard] Proxy /dashboard/api/payouts -> ${UPSTREAM}`);
+  console.log(`[dashboard] Merchant API: /dashboard/api/merchant/:address/payouts`);
 });

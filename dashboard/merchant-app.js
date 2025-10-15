@@ -350,7 +350,7 @@
     setStatus('Loading...');
     
     try {
-      const data = await fetchWithTimeout(`/api/merchant/${currentMerchantAddress}/payouts`, { timeout: 8000 });
+      const data = await fetchWithTimeout(`/dashboard/api/merchant/${currentMerchantAddress}/payouts`, { timeout: 8000 });
       const list = normalizeTransactions(parseList(data));
 
       if (list.length === 0) {

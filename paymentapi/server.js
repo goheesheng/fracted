@@ -15,9 +15,6 @@ const PORT = process.env.PORT || 8080
 // Serve static assets from /public
 app.use(express.static(path.join(__dirname, 'public')))
 
-// Health check
-app.get('/health', (_req, res) => res.json({ ok: true }))
-
 // Build config from environment variables and expose to frontend
 // Expected env vars (optional except those you use):
 // - OAPP_base_sepolia, OAPP_arbitrum_sepolia
@@ -148,12 +145,12 @@ app.get('/initiatebyuser', (_req, res) => {
 
 // Root serves the generator page
 app.get('/', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'generator.html'))
+  res.sendFile(path.join(__dirname, 'public', 'index.html'))
 })
 
 // Payment page route
 app.get('/payment', (_req, res) => {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'))
+  res.sendFile(path.join(__dirname, 'public', 'payment.html'))
 })
 
 app.listen(PORT, () => {

@@ -238,7 +238,7 @@
         
         try {
           // Check if merchant exists by making a test API call
-          const response = await fetch(`/api/merchant/${address.toLowerCase()}/payouts`, {
+          const response = await fetch(`/dashboard/api/merchant/${address.toLowerCase()}/payouts`, {
             method: 'GET',
             headers: {
               'Accept': 'application/json'

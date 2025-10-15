@@ -1,5 +1,5 @@
 (function () {
-  const ENDPOINT = '/api/payouts';
+  const ENDPOINT = '/dashboard/api/payouts';
   const POLL_MS = 5000;
 
   const el = {
