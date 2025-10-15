@@ -208,13 +208,11 @@
         <div class="title-section">
           <h1 class="generator-title">
             <img src="/logo.png" alt="Fracted" class="title-logo" />
-            Payment Link Generator
           </h1>
-          <p class="generator-subtitle">Generate payment links for Fracted cross-chain payments</p>
         </div>
 
       <section class="card">
-        <h2>Payment Parameters</h2>
+        <h1 class="generator-title">Payment Link Generator</h1>
         <div class="grid-2x2">
           <label>Merchant Address
             <input id="merchant" type="text" placeholder="0x..." />
@@ -314,8 +312,8 @@
           const data = await response.json()
 
           if (data.success) {
-            // Replace localhost with the specified server URL
-            const paymentLink = data.paymentLink.replace('http://localhost:8080', 'http://85.211.176.154:8888')
+            // Use the payment link directly from server (already uses correct domain)
+            const paymentLink = data.paymentLink
             document.getElementById('paymentLink').value = paymentLink
             document.getElementById('resultCard').style.display = 'block'
             generateQRCode(paymentLink)
