@@ -17,6 +17,15 @@ body {
   overflow-y: auto;
 }
 
+/* Telegram compatibility - ensure proper scrolling */
+@media (max-width: 768px) {
+  body {
+    overflow-y: auto;
+    height: auto;
+    min-height: 100vh;
+  }
+}
+
 /* Generator page styles */
 .container {
   width: 100vw;
@@ -1045,8 +1054,15 @@ button {
     height: auto !important;
     width: 100% !important;
     max-width: 100% !important;
-    overflow-y: visible !important;
+    overflow-y: auto !important;
     overflow-x: hidden !important;
+  }
+  
+  /* Telegram compatibility - use generator container styles */
+  .payment-container.generator-container {
+    overflow-y: auto;
+    height: auto;
+    min-height: 100vh;
   }
   
   /* 左侧信息部分在手机端显示在上方 */
@@ -1609,6 +1625,27 @@ button {
 /* Hidden elements */
 #log {
   display: none !important;
+}
+
+/* Telegram WebApp compatibility */
+@media (max-width: 768px) {
+  .payment-container.generator-container {
+    position: relative;
+    overflow-y: auto;
+    overflow-x: hidden;
+    height: auto;
+    min-height: 100vh;
+    width: 100%;
+    max-width: 100%;
+  }
+  
+  .payment-container.generator-container .seller-side,
+  .payment-container.generator-container .payment-side {
+    position: relative;
+    overflow: visible;
+    height: auto;
+    width: 100%;
+  }
 }
 
 /* Animation for smooth transitions */
