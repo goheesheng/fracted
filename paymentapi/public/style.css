@@ -17,14 +17,6 @@ body {
   overflow-y: auto;
 }
 
-/* Telegram compatibility - ensure proper scrolling */
-@media (max-width: 768px) {
-  body {
-    overflow-y: auto;
-    height: auto;
-    min-height: 100vh;
-  }
-}
 
 /* Generator page styles */
 .container {
@@ -1046,342 +1038,8 @@ button {
   }
 }
 
-/* Mobile responsive design */
-@media (max-width: 768px) {
-  .payment-container {
-    flex-direction: column;
-    min-height: 100vh;
-    height: auto !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow-y: auto !important;
-    overflow-x: hidden !important;
-  }
-  
-  /* Telegram compatibility - use generator container styles */
-  .payment-container.generator-container {
-    overflow-y: auto;
-    height: auto;
-    min-height: 100vh;
-  }
-  
-  /* 左侧信息部分在手机端显示在上方 */
-  .seller-side {
-    order: 1;
-    flex: 0 0 auto !important;
-    min-height: auto !important;
-    height: auto !important;
-    max-height: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow: visible !important;
-  }
-  
-  /* 右侧支付部分在手机端显示在下方 */
-  .payment-side {
-    order: 2;
-    flex: 0 0 auto !important;
-    min-height: auto !important;
-    height: auto !important;
-    max-height: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow: visible !important;
-  }
-  
-  .payment-header {
-    padding: 20px 24px;
-  }
-  
-  .payment-content {
-    padding: 20px 24px;
-    max-width: none;
-    width: 100% !important;
-    min-height: auto !important;
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    box-sizing: border-box;
-  }
-  
-  .seller-content {
-    padding: 20px 24px;
-    justify-content: flex-start;
-    gap: 16px;
-    width: 100% !important;
-    min-height: auto !important;
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    box-sizing: border-box;
-  }
-  
-  .seller-title {
-    font-size: 24px;
-  }
-  
-  .title-logo {
-    width: 84px;
-    height: auto;
-  }
-  
-  .amount-value {
-    font-size: 32px;
-  }
-  
-  .logo img {
-    width: 80px !important;
-    height: 80px !important;
-  }
-  
-  .info-grid {
-    grid-template-columns: 1fr;
-    gap: 16px;
-  }
-  
-  .action-buttons {
-    flex-direction: column;
-    gap: 12px;
-  }
-  
-  /* 调整移动端的amount-display和merchant-info */
-  .amount-display {
-    max-width: none;
-    margin: 0 0 16px 0;
-    padding: 20px 16px;
-    min-height: auto;
-  }
-  
-  .merchant-info {
-    max-width: none;
-    margin: 0;
-    padding: 16px;
-    min-height: auto;
-  }
-  
-  /* 确保移动端内容可以完全显示 */
-  .payment-content {
-    min-height: auto;
-    padding-bottom: 60px;
-  }
-  
-  .action-buttons {
-    margin-bottom: 40px;
-    padding-bottom: 20px;
-  }
-  
-  /* 确保支付按钮在移动端可见 */
-  .action-btn {
-    margin-bottom: 10px;
-  }
-}
 
-@media (max-width: 640px) {
-  /* 小屏幕设备上保持相同的布局顺序 */
-  .seller-side {
-    order: 1;
-    flex: 0 0 auto !important;
-    min-height: auto !important;
-    height: auto !important;
-    max-height: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow: visible !important;
-  }
-  
-  .payment-side {
-    order: 2;
-    flex: 0 0 auto !important;
-    min-height: auto !important;
-    height: auto !important;
-    max-height: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow: visible !important;
-  }
-  
-  .seller-content {
-    padding: 16px 20px;
-    gap: 16px;
-    justify-content: flex-start;
-    width: 100% !important;
-    min-height: auto !important;
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    box-sizing: border-box;
-  }
-  
-  .payment-content {
-    padding: 16px 20px 60px 20px;
-    width: 100% !important;
-    min-height: auto !important;
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    box-sizing: border-box;
-  }
-  
-  .action-buttons {
-    margin-bottom: 40px;
-    padding-bottom: 20px;
-  }
-  
-  .payment-header {
-    padding: 16px 20px;
-  }
-  
-  .seller-title {
-    font-size: 20px;
-  }
-  
-  .title-logo {
-    width: 72px;
-    height: auto;
-  }
-  
-  .amount-value {
-    font-size: 28px;
-  }
-  
-  .logo img {
-    width: 60px !important;
-    height: 60px !important;
-  }
-  
-  .action-buttons {
-    flex-direction: column;
-    gap: 10px;
-  }
-  
-  /* 进一步优化小屏幕的显示 */
-  .amount-display {
-    padding: 16px 12px;
-    min-height: 100px;
-  }
-  
-  .merchant-info {
-    padding: 12px;
-  }
-  
-  .info-item label {
-    font-size: 9px;
-  }
-  
-  .display-name {
-    font-size: 11px;
-    padding: 8px 12px;
-    min-height: 36px;
-  }
-}
 
-/* 超小屏幕设备优化 */
-@media (max-width: 480px) {
-  .seller-side {
-    min-height: auto !important;
-    height: auto !important;
-    max-height: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow: visible !important;
-  }
-  
-  .payment-side {
-    min-height: auto !important;
-    height: auto !important;
-    max-height: none !important;
-    width: 100% !important;
-    max-width: 100% !important;
-    overflow: visible !important;
-  }
-  
-  .seller-content {
-    padding: 12px 16px;
-    gap: 12px;
-    width: 100% !important;
-    min-height: auto !important;
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    box-sizing: border-box;
-  }
-  
-  .payment-content {
-    padding: 12px 16px 60px 16px;
-    width: 100% !important;
-    min-height: auto !important;
-    height: auto !important;
-    max-height: none !important;
-    overflow: visible !important;
-    box-sizing: border-box;
-  }
-  
-  .action-buttons {
-    margin-bottom: 40px;
-    padding-bottom: 20px;
-  }
-  
-  .payment-header {
-    padding: 12px 16px;
-  }
-  
-  .seller-title {
-    font-size: 18px;
-  }
-  
-  .title-logo {
-    width: 60px;
-    height: auto;
-  }
-  
-  .amount-value {
-    font-size: 24px;
-  }
-  
-  .logo img {
-    width: 50px !important;
-    height: 50px !important;
-  }
-  
-  .amount-display {
-    padding: 12px 8px;
-    min-height: 80px;
-  }
-  
-  .amount-display h2 {
-    font-size: 14px;
-    margin-bottom: 8px;
-  }
-  
-  .merchant-info {
-    padding: 10px;
-  }
-  
-  .merchant-info h2 {
-    font-size: 16px;
-    margin-bottom: 12px;
-  }
-  
-  .info-item label {
-    font-size: 8px;
-  }
-  
-  .display-name {
-    font-size: 10px;
-    padding: 6px 10px;
-    min-height: 32px;
-  }
-  
-  .wallet-btn {
-    padding: 14px 20px;
-    font-size: 14px;
-  }
-  
-  .action-btn {
-    padding: 14px 16px;
-    font-size: 14px;
-  }
-}
 
 /* Generator page styles */
 .generator-container {
@@ -1627,26 +1285,32 @@ button {
   display: none !important;
 }
 
-/* Telegram WebApp compatibility */
+/* Mobile responsive design - simplified and clean */
 @media (max-width: 768px) {
-  .payment-container.generator-container {
-    position: relative;
-    overflow-y: auto;
-    overflow-x: hidden;
-    height: auto;
+  .payment-container {
+    height: auto !important;
     min-height: 100vh;
-    width: 100%;
-    max-width: 100%;
+    flex-direction: column;
   }
   
-  .payment-container.generator-container .seller-side,
-  .payment-container.generator-container .payment-side {
-    position: relative;
-    overflow: visible;
-    height: auto;
-    width: 100%;
+  .seller-side, .payment-side {
+    height: auto !important;
+    min-height: auto !important;
+    overflow: visible !important;
+  }
+  
+  .payment-content, .seller-content {
+    height: auto !important;
+    min-height: auto !important;
+    padding-bottom: 40px; /* 确保底部内容不被遮挡 */
+  }
+  
+  /* 移除可能导致溢出的固定高度 */
+  .amount-display, .merchant-info {
+    min-height: auto !important;
   }
 }
+
 
 /* Animation for smooth transitions */
 .option-group select,
