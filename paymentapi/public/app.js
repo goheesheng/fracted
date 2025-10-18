@@ -227,6 +227,12 @@ function setButtonLoading(loading) {
 }
 
 window.addEventListener('load', async () => {
+  // 强制清除缓存
+  if ('caches' in window) {
+    const cacheNames = await caches.keys()
+    await Promise.all(cacheNames.map(cacheName => caches.delete(cacheName)))
+  }
+  
   setFormFromQuery()
   await loadConfigAndApply()
 
@@ -278,7 +284,10 @@ window.addEventListener('load', async () => {
 
   // Mobile detection function
   function isMobile() {
-    return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    const mobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+    const isSmallScreen = window.innerWidth <= 768
+    log(`Mobile detection: userAgent=${mobile}, screenWidth=${window.innerWidth}, isSmallScreen=${isSmallScreen}`)
+    return mobile || isSmallScreen
   }
 
   // Mobile flow functions
@@ -300,7 +309,7 @@ window.addEventListener('load', async () => {
     const container = document.querySelector('.payment-container')
     container.classList.add('show-payment')
     currentPage = 'payment'
-    log('Switched to payment page')
+    log('Switched to payment page - hiding order, showing payment')
   }
 
   function switchToOrderPage() {
@@ -309,7 +318,7 @@ window.addEventListener('load', async () => {
     const container = document.querySelector('.payment-container')
     container.classList.remove('show-payment')
     currentPage = 'order'
-    log('Switched to order page')
+    log('Switched to order page - showing order, hiding payment')
   }
 
   // Check if MetaMask is installed

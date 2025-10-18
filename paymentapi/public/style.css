@@ -1321,9 +1321,10 @@ button {
   display: none !important;
 }
 
-/* Confirm and Back button styles - 默认完全隐藏 */
+/* 完全隐藏移动端按钮 - 网页端永远不显示 */
 .confirm-section,
-.back-section {
+.back-section,
+.mobile-only {
   display: none !important;
 }
 
@@ -1432,38 +1433,43 @@ button {
     min-height: auto !important;
   }
   
-  /* 手机端页面切换效果 */
+  /* 手机端页面切换效果 - 使用简单的显示/隐藏 */
   .payment-container.mobile-flow {
     display: flex;
-    flex-direction: row;
-    width: 200%; /* 两倍宽度容纳两个页面 */
-    transition: transform 0.3s ease-in-out;
-  }
-  
-  .payment-container.mobile-flow.show-payment {
-    transform: translateX(-50%); /* 向左移动50%显示支付页面 */
-  }
-  
-  .payment-container.mobile-flow .seller-side,
-  .payment-container.mobile-flow .payment-side {
-    width: 50%; /* 每个页面占50%宽度 */
-    flex-shrink: 0;
+    flex-direction: column;
   }
   
 }
 
-/* 手机端显示确认和返回按钮 */
+/* 手机端特殊处理 */
 @media (max-width: 768px) {
-  .mobile-only.confirm-section {
+  /* 手机端显示移动端按钮 */
+  .mobile-only {
     display: block !important;
+  }
+  
+  .mobile-only.confirm-section {
     margin-top: 24px;
     text-align: center;
   }
   
   .mobile-only.back-section {
-    display: block !important;
     margin-bottom: 20px;
     text-align: left;
+  }
+  
+  /* 手机端初始状态：只显示订单页面，隐藏支付页面 */
+  .payment-container.mobile-flow .payment-side {
+    display: none;
+  }
+  
+  /* 手机端确认后：显示支付页面，隐藏订单页面 */
+  .payment-container.mobile-flow.show-payment .seller-side {
+    display: none;
+  }
+  
+  .payment-container.mobile-flow.show-payment .payment-side {
+    display: flex;
   }
 }
 
