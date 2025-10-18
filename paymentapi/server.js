@@ -3,6 +3,7 @@ import path from 'path'
 import dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
 import { Options } from '@layerzerolabs/lz-v2-utilities'
+import PaymentDatabase from './database.js'
 
 dotenv.config()
 
@@ -11,6 +12,12 @@ const __dirname = path.dirname(__filename)
 
 const app = express()
 const PORT = process.env.PORT || 8080
+
+// Initialize database
+const paymentDB = new PaymentDatabase()
+
+// Middleware for parsing JSON
+app.use(express.json())
 
 // Serve static assets from /public with no-cache headers
 app.use(express.static(path.join(__dirname, 'public'), {
@@ -82,9 +89,9 @@ app.get('/options', (req, res) => {
   }
 })
 
-// Generate payment link
+// Generate payment link with payment ID
 // Usage: GET /generate-link?merchant=0x...&dstEid=40245&dstToken=0x...&amount=1000000
-app.get('/generate-link', (req, res) => {
+app.get('/generate-link', async (req, res) => {
   try {
     const { merchant, dstEid, dstToken, amount } = req.query
     
@@ -125,12 +132,16 @@ app.get('/generate-link', (req, res) => {
       })
     }
     
-    // Generate the payment link
+    // Create payment record in database
+    const paymentId = await paymentDB.createPayment(merchant, dstEidNum, dstToken, amountNum)
+    
+    // Generate the new payment link with payment ID
     const baseUrl = 'https://demo.fracted.xyz'
-    const paymentLink = `${baseUrl}/payment/?merchant=${merchant}&dstEid=${dstEid}&dstToken=${dstToken}&amount=${amount}`
+    const paymentLink = `${baseUrl}/payment/${paymentId}`
     
     res.json({
       success: true,
+      paymentId,
       paymentLink,
       parameters: {
         merchant,
@@ -139,6 +150,114 @@ app.get('/generate-link', (req, res) => {
         amount: amountNum
       },
       message: 'Payment link generated successfully'
+    })
+    
+  } catch (e) {
+    res.status(500).json({ error: e?.message || String(e) })
+  }
+})
+
+// Get payment information by payment ID
+// Usage: GET /api/payment/:paymentId
+app.get('/api/payment/:paymentId', async (req, res) => {
+  try {
+    const { paymentId } = req.params
+    
+    if (!paymentId) {
+      return res.status(400).json({ 
+        error: 'Payment ID is required' 
+      })
+    }
+    
+    const payment = await paymentDB.getPayment(paymentId)
+    
+    if (!payment) {
+      return res.status(404).json({ 
+        error: 'Payment not found' 
+      })
+    }
+    
+    res.json({
+      success: true,
+      payment: {
+        id: payment.id,
+        merchant: payment.merchant_address,
+        dstEid: payment.dst_eid,
+        dstToken: payment.dst_token,
+        amount: payment.amount,
+        status: payment.status,
+        createdAt: payment.created_at,
+        updatedAt: payment.updated_at
+      }
+    })
+    
+  } catch (e) {
+    res.status(500).json({ error: e?.message || String(e) })
+  }
+})
+
+// Update payment status
+// Usage: POST /api/payment/:paymentId/status
+app.post('/api/payment/:paymentId/status', async (req, res) => {
+  try {
+    const { paymentId } = req.params
+    const { status } = req.body
+    
+    if (!paymentId) {
+      return res.status(400).json({ 
+        error: 'Payment ID is required' 
+      })
+    }
+    
+    if (!status) {
+      return res.status(400).json({ 
+        error: 'Status is required' 
+      })
+    }
+    
+    const validStatuses = ['pending', 'processing', 'completed', 'failed', 'cancelled']
+    if (!validStatuses.includes(status)) {
+      return res.status(400).json({ 
+        error: `Invalid status. Must be one of: ${validStatuses.join(', ')}` 
+      })
+    }
+    
+    const updated = await paymentDB.updatePaymentStatus(paymentId, status)
+    
+    if (updated === 0) {
+      return res.status(404).json({ 
+        error: 'Payment not found' 
+      })
+    }
+    
+    res.json({
+      success: true,
+      message: 'Payment status updated successfully'
+    })
+    
+  } catch (e) {
+    res.status(500).json({ error: e?.message || String(e) })
+  }
+})
+
+// Get all payments (for admin/debugging)
+// Usage: GET /api/payments
+app.get('/api/payments', async (req, res) => {
+  try {
+    const payments = await paymentDB.getAllPayments()
+    
+    res.json({
+      success: true,
+      payments: payments.map(payment => ({
+        id: payment.id,
+        merchant: payment.merchant_address,
+        dstEid: payment.dst_eid,
+        dstToken: payment.dst_token,
+        amount: payment.amount,
+        status: payment.status,
+        createdAt: payment.created_at,
+        updatedAt: payment.updated_at
+      }))
     })
     
   } catch (e) {
@@ -156,7 +275,12 @@ app.get('/', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'))
 })
 
-// Payment page route
+// Payment page route with payment ID
+app.get('/payment/:paymentId', (_req, res) => {
+  res.sendFile(path.join(__dirname, 'public', 'payment.html'))
+})
+
+// Legacy payment page route (for backward compatibility)
 app.get('/payment', (_req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'payment.html'))
 })

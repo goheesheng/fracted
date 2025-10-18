@@ -90,11 +90,50 @@ function getQueryParam(name, defaultValue = '') {
   return url.searchParams.get(name) ?? defaultValue
 }
 
-function setFormFromQuery() {
-  $('merchant').value = getQueryParam('merchant')
-  $('dstEid').value = getQueryParam('dstEid')
-  $('dstToken').value = getQueryParam('dstToken')
-  $('amount').value = getQueryParam('amount')
+function getPaymentIdFromUrl() {
+  const path = window.location.pathname
+  const match = path.match(/\/payment\/(\d+)/)
+  return match ? match[1] : null
+}
+
+async function setFormFromQuery() {
+  const paymentId = getPaymentIdFromUrl()
+  
+  if (paymentId) {
+    // Load payment data from API using payment ID
+    try {
+      log(`Loading payment data for ID: ${paymentId}`)
+      const response = await fetch(`/api/payment/${paymentId}`)
+      
+      if (!response.ok) {
+        throw new Error(`Failed to load payment: ${response.status}`)
+      }
+      
+      const data = await response.json()
+      const payment = data.payment
+      
+      // Set form values from API data
+      $('merchant').value = payment.merchant
+      $('dstEid').value = payment.dstEid
+      $('dstToken').value = payment.dstToken
+      $('amount').value = payment.amount
+      
+      log(`Payment data loaded: ${JSON.stringify(payment)}`)
+      
+    } catch (error) {
+      log(`Error loading payment data: ${error.message}`)
+      alert(`Error loading payment data: ${error.message}`)
+      return
+    }
+  } else {
+    // Legacy mode: load from URL parameters
+    $('merchant').value = getQueryParam('merchant')
+    $('dstEid').value = getQueryParam('dstEid')
+    $('dstToken').value = getQueryParam('dstToken')
+    $('amount').value = getQueryParam('amount')
+    
+    log('Using legacy URL parameters')
+  }
   
   console.log('setFormFromQuery called, loadedConfig:', loadedConfig)
   
@@ -282,7 +321,7 @@ window.addEventListener('load', async () => {
     await Promise.all(cacheNames.map(cacheName => caches.delete(cacheName)))
   }
   
-  setFormFromQuery()
+  await setFormFromQuery()
   await loadConfigAndApply()
 
   // Check MetaMask status on page load
