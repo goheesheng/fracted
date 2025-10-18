@@ -92,7 +92,8 @@ function getQueryParam(name, defaultValue = '') {
 
 function getPaymentIdFromUrl() {
   const path = window.location.pathname
-  const match = path.match(/\/payment\/(\d+)/)
+  // Match both positive and negative numbers, and also handle very large numbers
+  const match = path.match(/\/payment\/(-?\d+)/)
   return match ? match[1] : null
 }
 

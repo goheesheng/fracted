@@ -1,10 +1,11 @@
 // Simple Snowflake ID Generator
-// Based on Twitter's Snowflake algorithm
+// Based on Twitter's Snowflake algorithm with fixes for negative numbers
 
 class Snowflake {
   constructor(options = {}) {
     this.machineId = options.machineId || 1
-    this.epoch = options.epoch || 1640995200000 // 2022-01-01 00:00:00 UTC
+    // Use a more recent epoch to avoid large timestamp differences
+    this.epoch = options.epoch || 1700000000000 // 2023-11-15 00:00:00 UTC
     this.sequence = 0
     this.lastTimestamp = 0
   }
@@ -27,10 +28,19 @@ class Snowflake {
     
     this.lastTimestamp = timestamp
     
-    // 41 bits for timestamp, 10 bits for machine ID, 12 bits for sequence
-    const id = ((timestamp - this.epoch) << 22) | (this.machineId << 12) | this.sequence
+    // Calculate timestamp difference
+    const timestampDiff = timestamp - this.epoch
     
-    return id
+    // Ensure timestamp difference is positive and within safe range
+    if (timestampDiff < 0) {
+      throw new Error('Timestamp difference is negative. Check epoch setting.')
+    }
+    
+    // Use a simpler approach to avoid overflow
+    // Combine timestamp (milliseconds since epoch), machine ID, and sequence
+    const id = timestampDiff * 1000000 + this.machineId * 1000 + this.sequence
+    
+    return id.toString()
   }
   
   waitForNextMillis(lastTimestamp) {
