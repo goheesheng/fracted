@@ -17,7 +17,17 @@
     "test": "$npm_execpath run test:forge && $npm_execpath run test:hardhat",
     "test:anchor": "anchor test",
     "test:forge": "forge test",
-    "test:hardhat": "hardhat test"
+    "test:hardhat": "hardhat test",
+    "lz:send": "ts-node scripts/lz-cli.ts send",
+    "lz:send-token-payout": "ts-node scripts/lz-cli.ts send-token-payout",
+    "lz:quote": "ts-node scripts/lz-cli.ts quote",
+    "lz:set-value": "ts-node scripts/lz-cli.ts set-value",
+    "lz:simulate-receive": "ts-node scripts/lz-cli.ts simulate-receive",
+    "lz:relay-send": "ts-node scripts/lz-cli.ts relay-send",
+    "lz:relay-token-payout": "ts-node scripts/lz-cli.ts relay-token-payout",
+    "lz:get-addresses": "ts-node scripts/lz-cli.ts get-addresses",
+    "lz:calculate-pdas": "ts-node scripts/lz-cli.ts calculate-pdas",
+    "lz:check-stability": "ts-node scripts/lz-cli.ts check-stability"
   },
   "resolutions": {
     "ethers": "^5.7.2",

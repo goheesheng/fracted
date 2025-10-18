@@ -6,6 +6,7 @@ pub struct Store {
     pub bump: u8, // This is required and should be consistent.
     pub endpoint_program: Pubkey, // This is required and should be consistent.
     pub string: String, // This is specific to this string-passing example.
+    pub transfer_contract: Option<Pubkey>, // Address of the transfer contract to call
     // You can add more fields as needed for your OApp implementation.
 }
 

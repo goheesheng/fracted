@@ -41,6 +41,14 @@ pub mod my_oapp {
         SetPeerConfig::apply(&mut ctx, &params)
     }
 
+    // admin instruction to set the transfer contract address
+    pub fn set_value(
+        mut ctx: Context<SetValue>,
+        params: SetValueParams,
+    ) -> Result<()> {
+        SetValue::apply(&mut ctx, &params)
+    }
+
     // ============================== Public ==============================
     // public instruction returning the estimated MessagingFee for sending a message.
     pub fn quote_send(ctx: Context<QuoteSend>, params: QuoteSendParams) -> Result<MessagingFee> {
@@ -63,6 +71,27 @@ pub mod my_oapp {
         params: LzReceiveParams,
     ) -> Result<Vec<LzAccount>> {
         LzReceiveTypes::apply(&ctx, &params)
+    }
+
+    // ============================== Relayer Functions ==============================
+    // External functions that other contracts can call to send messages through this OApp
+    
+    /// Relay a string message to another chain
+    /// Other contracts can call this to send messages through this OApp
+    pub fn relay_send(
+        mut ctx: Context<RelaySend>,
+        params: RelaySendParams,
+    ) -> Result<()> {
+        RelaySend::apply(&mut ctx, &params)
+    }
+
+    /// Relay a token payout message to another chain
+    /// Other contracts can call this to send token payout messages through this OApp
+    pub fn relay_token_payout(
+        mut ctx: Context<RelayTokenPayout>,
+        params: RelayTokenPayoutParams,
+    ) -> Result<()> {
+        RelayTokenPayout::apply(&mut ctx, &params)
     }
 
 }
