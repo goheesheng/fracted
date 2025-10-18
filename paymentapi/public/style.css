@@ -1321,18 +1321,109 @@ button {
   display: none !important;
 }
 
+/* Confirm and Back button styles */
+.confirm-section {
+  margin-top: 24px;
+  text-align: center;
+  display: none; /* 默认隐藏，只在手机端显示 */
+}
+
+.confirm-btn {
+  width: 100%;
+  background: 
+    linear-gradient(135deg, #a855f7 0%, #9333ea 50%, #a855f7 100%),
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.2) 0%, transparent 50%);
+  color: #ffffff;
+  border: none;
+  border-radius: 14px;
+  padding: 18px 24px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  box-shadow: 
+    0 6px 20px rgba(168, 85, 247, 0.4),
+    0 2px 8px rgba(168, 85, 247, 0.2),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+  position: relative;
+  overflow: hidden;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
+.confirm-btn::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.5s ease;
+}
+
+.confirm-btn:hover::before {
+  left: 100%;
+}
+
+.confirm-btn:hover {
+  background: 
+    linear-gradient(135deg, #9333ea 0%, #7c3aed 50%, #9333ea 100%),
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.25) 0%, transparent 50%);
+  transform: translateY(-3px);
+  box-shadow: 
+    0 8px 25px rgba(168, 85, 247, 0.5),
+    0 4px 12px rgba(168, 85, 247, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.25);
+}
+
+.confirm-btn:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(168, 85, 247, 0.3);
+}
+
+.back-section {
+  margin-bottom: 20px;
+  text-align: left;
+  display: none; /* 默认隐藏，只在手机端显示 */
+}
+
+.back-btn {
+  background: transparent;
+  color: #9ca3af;
+  border: 1px solid #374151;
+  border-radius: 8px;
+  padding: 12px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.back-btn:hover {
+  background: #374151;
+  color: #f9fafb;
+  border-color: #4b5563;
+}
+
 /* Mobile responsive design - simplified and clean */
 @media (max-width: 768px) {
   .payment-container {
     height: auto !important;
     min-height: 100vh;
     flex-direction: column;
+    position: relative;
+    overflow-x: hidden;
   }
   
   .seller-side, .payment-side {
     height: auto !important;
     min-height: auto !important;
     overflow: visible !important;
+    width: 100%;
+    position: relative;
   }
   
   .payment-content, .seller-content {
@@ -1344,6 +1435,36 @@ button {
   /* 移除可能导致溢出的固定高度 */
   .amount-display, .merchant-info {
     min-height: auto !important;
+  }
+  
+  /* 手机端页面切换效果 */
+  .payment-container.mobile-flow {
+    display: flex;
+    flex-direction: row;
+    width: 200%; /* 两倍宽度容纳两个页面 */
+    transition: transform 0.3s ease-in-out;
+  }
+  
+  .payment-container.mobile-flow.show-payment {
+    transform: translateX(-50%); /* 向左移动50%显示支付页面 */
+  }
+  
+  .payment-container.mobile-flow .seller-side,
+  .payment-container.mobile-flow .payment-side {
+    width: 50%; /* 每个页面占50%宽度 */
+    flex-shrink: 0;
+  }
+  
+}
+
+/* 手机端显示确认和返回按钮 */
+@media (max-width: 768px) {
+  .confirm-section {
+    display: block !important;
+  }
+  
+  .back-section {
+    display: block !important;
   }
 }
 

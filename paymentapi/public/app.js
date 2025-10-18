@@ -184,6 +184,10 @@ async function ensureNetwork(targetKey) {
 let provider, signer
 let loadedConfig = false
 
+// Mobile flow state
+let isMobileFlow = false
+let currentPage = 'order' // 'order' or 'payment'
+
 async function loadConfigAndApply() {
   try {
     const res = await fetch('/config')
@@ -250,12 +254,56 @@ window.addEventListener('load', async () => {
   // Initialize MetaMask status check
   checkMetaMaskStatus()
 
+  // Initialize mobile flow
+  initMobileFlow()
+
   // React to network changes
   $('srcNetwork').addEventListener('change', () => {})
+
+  // Confirm order button event listener
+  $('confirmOrderBtn').addEventListener('click', () => {
+    log('Order confirmed, switching to payment page')
+    switchToPaymentPage()
+  })
+
+  // Back to order button event listener
+  $('backToOrderBtn').addEventListener('click', () => {
+    log('Back to order page')
+    switchToOrderPage()
+  })
 
   // Mobile detection function
   function isMobile() {
     return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent)
+  }
+
+  // Mobile flow functions
+  function initMobileFlow() {
+    if (isMobile()) {
+      isMobileFlow = true
+      const container = document.querySelector('.payment-container')
+      container.classList.add('mobile-flow')
+      currentPage = 'order'
+      log('Mobile flow initialized')
+    }
+  }
+
+  function switchToPaymentPage() {
+    if (!isMobileFlow) return
+    
+    const container = document.querySelector('.payment-container')
+    container.classList.add('show-payment')
+    currentPage = 'payment'
+    log('Switched to payment page')
+  }
+
+  function switchToOrderPage() {
+    if (!isMobileFlow) return
+    
+    const container = document.querySelector('.payment-container')
+    container.classList.remove('show-payment')
+    currentPage = 'order'
+    log('Switched to order page')
   }
 
   // Check if MetaMask is installed
