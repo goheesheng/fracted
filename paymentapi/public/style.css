@@ -1321,11 +1321,10 @@ button {
   display: none !important;
 }
 
-/* Confirm and Back button styles */
-.confirm-section {
-  margin-top: 24px;
-  text-align: center;
-  display: none; /* 默认隐藏，只在手机端显示 */
+/* Confirm and Back button styles - 默认完全隐藏 */
+.confirm-section,
+.back-section {
+  display: none !important;
 }
 
 .confirm-btn {
@@ -1381,11 +1380,7 @@ button {
   box-shadow: 0 2px 8px rgba(168, 85, 247, 0.3);
 }
 
-.back-section {
-  margin-bottom: 20px;
-  text-align: left;
-  display: none; /* 默认隐藏，只在手机端显示 */
-}
+/* 移除重复的back-section定义，已在上面统一定义 */
 
 .back-btn {
   background: transparent;
@@ -1459,12 +1454,16 @@ button {
 
 /* 手机端显示确认和返回按钮 */
 @media (max-width: 768px) {
-  .confirm-section {
+  .mobile-only.confirm-section {
     display: block !important;
+    margin-top: 24px;
+    text-align: center;
   }
   
-  .back-section {
+  .mobile-only.back-section {
     display: block !important;
+    margin-bottom: 20px;
+    text-align: left;
   }
 }
 

@@ -260,16 +260,20 @@ window.addEventListener('load', async () => {
   // React to network changes
   $('srcNetwork').addEventListener('change', () => {})
 
-  // Confirm order button event listener
+  // Confirm order button event listener (mobile only)
   $('confirmOrderBtn').addEventListener('click', () => {
-    log('Order confirmed, switching to payment page')
-    switchToPaymentPage()
+    if (isMobileFlow) {
+      log('Order confirmed, switching to payment page')
+      switchToPaymentPage()
+    }
   })
 
-  // Back to order button event listener
+  // Back to order button event listener (mobile only)
   $('backToOrderBtn').addEventListener('click', () => {
-    log('Back to order page')
-    switchToOrderPage()
+    if (isMobileFlow) {
+      log('Back to order page')
+      switchToOrderPage()
+    }
   })
 
   // Mobile detection function
@@ -284,7 +288,9 @@ window.addEventListener('load', async () => {
       const container = document.querySelector('.payment-container')
       container.classList.add('mobile-flow')
       currentPage = 'order'
-      log('Mobile flow initialized')
+      log('Mobile flow initialized - showing order page first')
+    } else {
+      log('Desktop detected - showing both sides simultaneously')
     }
   }
 

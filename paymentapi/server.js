@@ -12,8 +12,16 @@ const __dirname = path.dirname(__filename)
 const app = express()
 const PORT = process.env.PORT || 8080
 
-// Serve static assets from /public
-app.use(express.static(path.join(__dirname, 'public')))
+// Serve static assets from /public with no-cache headers
+app.use(express.static(path.join(__dirname, 'public'), {
+  setHeaders: (res, path) => {
+    if (path.endsWith('.html') || path.endsWith('.css') || path.endsWith('.js')) {
+      res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate')
+      res.setHeader('Pragma', 'no-cache')
+      res.setHeader('Expires', '0')
+    }
+  }
+}))
 
 // Build config from environment variables and expose to frontend
 // Expected env vars (optional except those you use):
