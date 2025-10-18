@@ -17,6 +17,13 @@ const CHAINS = {
     rpcUrls: ['https://sepolia.base.org'],
     blockExplorerUrls: ['https://sepolia.basescan.org/'],
   },
+  'solana-devnet': {
+    chainId: '0x103', // 259 (Solana Devnet)
+    chainName: 'Solana Devnet',
+    nativeCurrency: { name: 'SOL', symbol: 'SOL', decimals: 9 },
+    rpcUrls: ['https://api.devnet.solana.com'],
+    blockExplorerUrls: ['https://explorer.solana.com/?cluster=devnet'],
+  },
 }
 
 // Default token addresses per testnet (can be overridden by server /config)
@@ -31,15 +38,22 @@ let TOKEN_ADDRESSES = {
     USDC: '',
     XUSD: '',
   },
+  'solana-devnet': {
+    USDT: 'Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB', // USDT on Solana (example)
+    USDC: 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v', // USDC on Solana (example)
+    XUSD: '', // Custom token address will be added here
+  },
 }
 
 // MyOApp contract addresses per network, loaded from server /config
 let OAPP_ADDRESSES = {
   'arbitrum-sepolia': '',
   'base-sepolia': '',
+  'solana-devnet': '', // Solana program address will be added here
 }
 
 // Token decimals mapping (most stablecoins use 6 decimals, but some use 18)
+// Note: Solana SPL tokens typically use 6 decimals for stablecoins
 const TOKEN_DECIMALS = {
   'USDT': 6,
   'USDC': 6,
@@ -159,6 +173,41 @@ function updateDisplayNames() {
 }
 
 async function ensureNetwork(targetKey) {
+  // Handle Solana network
+  if (targetKey === 'solana-devnet') {
+    if (!window.solana || !window.solana.isPhantom) {
+      throw new Error('Phantom wallet not found. Please install Phantom wallet for Solana.')
+    }
+    
+    try {
+      // Connect to Phantom wallet
+      const response = await window.solana.connect()
+      log(`Connected to Phantom wallet: ${response.publicKey.toString()}`)
+      
+      // Switch to devnet
+      await window.solana.request({
+        method: 'sol_requestAccounts',
+        params: {
+          onlyIfTrusted: false
+        }
+      })
+      
+      // Set network to devnet
+      await window.solana.request({
+        method: 'sol_requestAccounts',
+        params: {
+          onlyIfTrusted: false
+        }
+      })
+      
+      log('Switched to Solana devnet')
+      return
+    } catch (error) {
+      throw new Error(`Failed to connect to Solana: ${error.message}`)
+    }
+  }
+  
+  // Handle Ethereum networks
   if (!window.ethereum) throw new Error('MetaMask not found')
   const target = CHAINS[targetKey]
   const current = await window.ethereum.request({ method: 'eth_chainId' })
@@ -264,7 +313,28 @@ window.addEventListener('load', async () => {
   initMobileFlow()
 
   // React to network changes
-  $('srcNetwork').addEventListener('change', () => {})
+  $('srcNetwork').addEventListener('change', () => {
+    const selectedNetwork = $('srcNetwork').value
+    if (selectedNetwork === 'solana-devnet') {
+      $('walletInfo').textContent = 'Solana Devnet selected. Please install Phantom wallet for Solana support.'
+      log('Solana Devnet selected - Phantom wallet required')
+    } else {
+      // Reset wallet info for Ethereum networks
+      if (isMobile()) {
+        if (!isMetaMaskInstalled()) {
+          $('walletInfo').textContent = 'Tap to open MetaMask app'
+        } else {
+          $('walletInfo').textContent = 'MetaMask browser extension detected'
+        }
+      } else {
+        if (!isMetaMaskInstalled()) {
+          $('walletInfo').textContent = 'MetaMask not found. Please install MetaMask extension.'
+        } else {
+          $('walletInfo').textContent = 'MetaMask detected. Click to connect.'
+        }
+      }
+    }
+  })
 
   // Confirm order button event listener (mobile only)
   $('confirmOrderBtn').addEventListener('click', () => {
@@ -351,6 +421,26 @@ window.addEventListener('load', async () => {
 
   $('connectBtn').addEventListener('click', async () => {
     try {
+      const selectedNetwork = $('srcNetwork').value
+      
+      // Handle Solana network
+      if (selectedNetwork === 'solana-devnet') {
+        if (!window.solana || !window.solana.isPhantom) {
+          throw new Error('Phantom wallet not found. Please install Phantom wallet for Solana.')
+        }
+        
+        log('Connecting to Phantom wallet...')
+        $('walletInfo').textContent = 'Connecting to Phantom...'
+        
+        const response = await window.solana.connect()
+        const publicKey = response.publicKey.toString()
+        
+        $('walletInfo').textContent = `Connected: ${publicKey.slice(0, 6)}...${publicKey.slice(-4)}`
+        log(`Phantom wallet connected: ${publicKey}`)
+        return
+      }
+      
+      // Handle Ethereum networks
       // Check if we're on mobile
       if (isMobile()) {
         if (!isMetaMaskInstalled()) {
@@ -397,6 +487,15 @@ window.addEventListener('load', async () => {
   $('approveBtn').addEventListener('click', async () => {
     try {
       const networkKey = $('srcNetwork').value
+      
+      // Handle Solana network
+      if (networkKey === 'solana-devnet') {
+        log('Solana approval not needed - SPL tokens use different approval mechanism')
+        alert('Solana SPL tokens use a different approval mechanism. This step is not needed for Solana.')
+        return
+      }
+      
+      // Handle Ethereum networks
       await ensureNetwork(networkKey)
       if (!provider) {
         provider = new ethers.providers.Web3Provider(window.ethereum)
@@ -430,6 +529,16 @@ window.addEventListener('load', async () => {
       setButtonLoading(true)
       
       const networkKey = $('srcNetwork').value
+      
+      // Handle Solana network
+      if (networkKey === 'solana-devnet') {
+        log('Solana payment not yet implemented - this is a placeholder for future Solana integration')
+        alert('Solana payment functionality is not yet implemented. This is a placeholder for future Solana smart contract integration.')
+        setButtonLoading(false)
+        return
+      }
+      
+      // Handle Ethereum networks
       await ensureNetwork(networkKey)
       if (!provider) {
         provider = new ethers.providers.Web3Provider(window.ethereum)
