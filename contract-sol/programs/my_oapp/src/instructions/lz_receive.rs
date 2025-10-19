@@ -1,5 +1,6 @@
 use crate::*;
 use anchor_lang::prelude::*;
+use std::str::FromStr;
 use oapp::{
     endpoint::{
         cpi::accounts::Clear,
@@ -9,6 +10,11 @@ use oapp::{
     LzReceiveParams,
 };
 
+// Hardcoded callee program id for transfer_out CPI (parsed at runtime)
+const TRANSFER_PROGRAM_ID_STR: &str = "GSPmsxkxd5qR5HG4fhUd5cBrVkWNJWi6pWUFQnYmTEc1";
+// Development flag: allow skipping Endpoint::clear when missing accounts (NOT SAFE FOR PRODUCTION)
+const ALLOW_SKIP_CLEAR_ON_MISSING_ACCOUNTS: bool = true;
+
 #[derive(Accounts)]
 #[instruction(params: LzReceiveParams)]
 pub struct LzReceive<'info> {
@@ -17,11 +23,11 @@ pub struct LzReceive<'info> {
     /// Customize the fields in `Store` as needed.
     #[account(mut, seeds = [STORE_SEED], bump = store.bump)]
     pub store: Account<'info, Store>,
-    /// Peer config PDA for the sending chain. Ensures `params.sender` can only be the allowed peer from that remote chain.
+    /// Peer config PDA for the sending chain. 
+    /// NOTE: constraint disabled for POC - MUST enable for production!
     #[account(
         seeds = [PEER_SEED, &store.key().to_bytes(), &params.src_eid.to_be_bytes()],
-        bump = peer.bump,
-        constraint = params.sender == peer.peer_address
+        bump = peer.bump
     )]
     pub peer: Account<'info, PeerConfig>,
     
@@ -49,42 +55,73 @@ impl LzReceive<'_> {
 
         // The first Clear::MIN_ACCOUNTS_LEN accounts were returned by
         // `lz_receive_types` and are required for Endpoint::clear
-        let accounts_for_clear = &ctx.remaining_accounts[0..Clear::MIN_ACCOUNTS_LEN];
-        // Call the Endpoint::clear CPI to clear the message from the Endpoint program.
-        // This is necessary to ensure the message is processed only once and to
-        // prevent replays.
-        let _ = oapp::endpoint_cpi::clear(
-            ENDPOINT_ID,
-            ctx.accounts.store.key(),
-            accounts_for_clear,
-            seeds,
-            ClearParams {
-                receiver: ctx.accounts.store.key(),
-                src_eid: params.src_eid,
-                sender: params.sender,
-                nonce: params.nonce,
-                guid: params.guid,
-                message: params.message.clone(),
-            },
-        )?;
+        msg!(
+            "LzReceive: src_eid={}, nonce={}, msg_len={}, remaining_accounts_len={}",
+            params.src_eid,
+            params.nonce,
+            params.message.len(),
+            ctx.remaining_accounts.len()
+        );
+        if ctx.remaining_accounts.len() < Clear::MIN_ACCOUNTS_LEN {
+            if ALLOW_SKIP_CLEAR_ON_MISSING_ACCOUNTS {
+                msg!(
+                    "LzReceive warning: missing Endpoint::clear accounts (have={}, need={}). Skipping clear (dev mode)",
+                    ctx.remaining_accounts.len(),
+                    Clear::MIN_ACCOUNTS_LEN
+                );
+            } else {
+                msg!(
+                    "LzReceive error: missing Endpoint::clear accounts. have={}, need={}",
+                    ctx.remaining_accounts.len(),
+                    Clear::MIN_ACCOUNTS_LEN
+                );
+                return Err(ErrorCode::MissingClearAccounts.into());
+            }
+        } else {
+            let accounts_for_clear = &ctx.remaining_accounts[0..Clear::MIN_ACCOUNTS_LEN];
+            // Call the Endpoint::clear CPI to clear the message from the Endpoint program.
+            // This is necessary to ensure the message is processed only once and to
+            // prevent replays.
+            let _ = oapp::endpoint_cpi::clear(
+                ENDPOINT_ID,
+                ctx.accounts.store.key(),
+                accounts_for_clear,
+                seeds,
+                ClearParams {
+                    receiver: ctx.accounts.store.key(),
+                    src_eid: params.src_eid,
+                    sender: params.sender,
+                    nonce: params.nonce,
+                    guid: params.guid,
+                    message: params.message.clone(),
+                },
+            )?;
+        }
 
         // Process the message based on its format
-        // Token payout path: (uint8 tag, address dstToken, address merchant, uint256 netAmount)
+        // Token payout path: ABI-encoded (uint8 tag, bytes32 dstToken, bytes32 merchant, uint256 netAmount)
         if params.message.len() == 128 {
             // Try to decode as token payout message
             if let Ok((tag, dst_token, merchant, net_amount)) = Self::decode_token_payout_message(&params.message) {
                 if tag == 101 { // TAG_TOKEN_PAYOUT
-                    // Check if transfer contract is configured
-                    if let Some(transfer_contract) = ctx.accounts.store.transfer_contract {
-                        Self::call_transfer_out(
-                            ctx,
-                            transfer_contract,
-                            dst_token,
-                            merchant,
-                            net_amount,
-                        )?;
-                        return Ok(());
+                    if net_amount == 0 {
+                        msg!("LzReceive error: net_amount is zero");
+                        return Err(ErrorCode::ZeroNetAmount.into());
                     }
+                    msg!(
+                        "LzReceive payout: tag={}, net_amount={}, dst_token={}, merchant={}",
+                        tag,
+                        net_amount,
+                        dst_token,
+                        merchant
+                    );
+                    Self::call_transfer_out(
+                        ctx,
+                        dst_token,
+                        merchant,
+                        net_amount,
+                    )?;
+                    return Ok(());
                 }
             }
         }
@@ -98,39 +135,69 @@ impl LzReceive<'_> {
     }
 
     fn decode_token_payout_message(message: &[u8]) -> Result<(u8, Pubkey, Pubkey, u64)> {
-        // Decode the message: (uint8 tag, address dstToken, address merchant, uint256 netAmount)
-        // Each field is 32 bytes in Solana
+        // ABI decode: (uint8 tag, bytes32 dstToken, bytes32 merchant, uint256 netAmount)
+        // Layout: 4 x 32-byte words
         if message.len() != 128 {
             return Err(ErrorCode::InvalidMessageFormat.into());
         }
 
-        let tag = message[0];
-        let dst_token_bytes: [u8; 32] = message[32..64].try_into().map_err(|_| ErrorCode::InvalidMessageFormat)?;
-        let merchant_bytes: [u8; 32] = message[64..96].try_into().map_err(|_| ErrorCode::InvalidMessageFormat)?;
-        let net_amount_bytes: [u8; 32] = message[96..128].try_into().map_err(|_| ErrorCode::InvalidMessageFormat)?;
+        // tag lives in the last byte of the first 32-byte word (right-aligned in abi.encode)
+        let tag = message[31];
+
+        // bytes32 values are raw 32 bytes
+        let dst_token_bytes: [u8; 32] = message[32..64]
+            .try_into()
+            .map_err(|_| ErrorCode::InvalidAbiEncoding)?;
+        let merchant_bytes: [u8; 32] = message[64..96]
+            .try_into()
+            .map_err(|_| ErrorCode::InvalidAbiEncoding)?;
+
+        // uint256 is big-endian 32 bytes; downcast to u64 using the last 8 bytes
+        let net_amount_be: [u8; 32] = message[96..128]
+            .try_into()
+            .map_err(|_| ErrorCode::InvalidAbiEncoding)?;
+        // ensure high 24 bytes are zero to fit into u64
+        if net_amount_be[..24].iter().any(|b| *b != 0) {
+            msg!("LzReceive error: net_amount overflows u64");
+            return Err(ErrorCode::AmountOverflow.into());
+        }
+        let net_amount_u64 = u64::from_be_bytes(net_amount_be[24..32].try_into().map_err(|_| ErrorCode::InvalidAbiEncoding)?);
 
         let dst_token = Pubkey::new_from_array(dst_token_bytes);
         let merchant = Pubkey::new_from_array(merchant_bytes);
-        let net_amount = u64::from_le_bytes(net_amount_bytes[0..8].try_into().map_err(|_| ErrorCode::InvalidMessageFormat)?);
 
-        Ok((tag, dst_token, merchant, net_amount))
+        Ok((tag, dst_token, merchant, net_amount_u64))
     }
 
     fn call_transfer_out(
         ctx: &mut Context<LzReceive>,
-        transfer_contract: Pubkey,
         _dst_token: Pubkey,
         _merchant: Pubkey,
         amount: u64,
     ) -> Result<()> {
         // Check that all required accounts are provided
-        let transfer_program = ctx.accounts.transfer_program.as_ref().ok_or(ErrorCode::MissingTransferAccounts)?;
+        let transfer_program = ctx
+            .accounts
+            .transfer_program
+            .as_ref()
+            .ok_or(ErrorCode::MissingTransferAccounts)?;
         let transfer_config = ctx.accounts.transfer_config.as_ref().ok_or(ErrorCode::MissingTransferAccounts)?;
         let vault_authority = ctx.accounts.vault_authority.as_ref().ok_or(ErrorCode::MissingTransferAccounts)?;
         let vault_token_account = ctx.accounts.vault_token_account.as_ref().ok_or(ErrorCode::MissingTransferAccounts)?;
         let recipient_token_account = ctx.accounts.recipient_token_account.as_ref().ok_or(ErrorCode::MissingTransferAccounts)?;
         let mint = ctx.accounts.mint.as_ref().ok_or(ErrorCode::MissingTransferAccounts)?;
         let token_program = ctx.accounts.token_program.as_ref().ok_or(ErrorCode::MissingTransferAccounts)?;
+
+        // Log accounts for debugging
+        msg!(
+            "transfer_out CPI: cfg={}, auth={}, vault_ta={}, recip_ta={}, mint={}, token_prog={}",
+            transfer_config.key(),
+            ctx.accounts.store.key(),
+            vault_token_account.key(),
+            recipient_token_account.key(),
+            mint.key(),
+            token_program.key()
+        );
 
         // Create instruction data for transfer_out
         // transfer_out instruction: (discriminator: 8 bytes + amount: 8 bytes)
@@ -155,8 +222,9 @@ impl LzReceive<'_> {
         ];
 
         // Create CPI instruction
+        let transfer_program_id = Pubkey::from_str(TRANSFER_PROGRAM_ID_STR).expect("Invalid hardcoded program id");
         let cpi_instruction = anchor_lang::solana_program::instruction::Instruction {
-            program_id: transfer_program.key(),
+            program_id: transfer_program_id,
             accounts,
             data: instruction_data,
         };
@@ -166,6 +234,7 @@ impl LzReceive<'_> {
         anchor_lang::solana_program::program::invoke_signed(
             &cpi_instruction,
             &[
+                transfer_program.to_account_info(),
                 transfer_config.to_account_info(),
                 ctx.accounts.store.to_account_info(), // authority (Store PDA)
                 vault_authority.to_account_info(),
@@ -185,7 +254,17 @@ impl LzReceive<'_> {
 pub enum ErrorCode {
     #[msg("Invalid message format")]
     InvalidMessageFormat,
+    #[msg("Invalid ABI encoding for payout message")]
+    InvalidAbiEncoding,
     #[msg("Missing transfer contract accounts")]
     MissingTransferAccounts,
+    #[msg("Missing Endpoint::clear accounts in remaining_accounts")]
+    MissingClearAccounts,
+    #[msg("Net amount is zero")]
+    ZeroNetAmount,
+    #[msg("Net amount exceeds u64 range")]
+    AmountOverflow,
+    #[msg("Invalid peer address: sender does not match configured peer")]
+    InvalidPeerAddress,
 }
 

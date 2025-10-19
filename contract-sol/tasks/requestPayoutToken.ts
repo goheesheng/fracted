@@ -1,6 +1,7 @@
 import { ContractTransaction } from 'ethers'
-import { task, types } from 'hardhat/config'
-import { HardhatRuntimeEnvironment } from 'hardhat/types'
+// eslint-disable-next-line @typescript-eslint/no-var-requires
+const { task } = require('hardhat/config')
+import { PublicKey } from '@solana/web3.js'
 import { endpointIdToNetwork } from '@layerzerolabs/lz-definitions'
 import { Options } from '@layerzerolabs/lz-v2-utilities'
 
@@ -8,32 +9,28 @@ task(
     'lz:oapp:requestPayoutToken',
     'Request token payout cross-chain (pull srcToken, pay dstToken 97% to merchant)'
 )
-    .addParam('dstEid', 'Destination endpoint ID', undefined, types.int)
-    .addParam('srcToken', 'Source chain token address to pull from caller', undefined, types.string)
-    .addParam('dstToken', 'Destination chain token address to pay to merchant', undefined, types.string)
-    .addParam('merchant', 'Destination chain merchant address to receive payout', undefined, types.string)
-    .addParam(
-        'amount',
-        'Gross token amount in smallest units (e.g., 1 USDC = 1000000)',
-        undefined,
-        types.string
-    )
+    .addParam('dstEid', 'Destination endpoint ID')
+    .addParam('srcToken', 'Source chain token address to pull from caller')
+    .addParam('dstToken', 'Destination token address (EVM 0x.. or Solana base58)')
+    .addParam('merchant', 'Destination merchant address (EVM 0x.. or Solana base58)')
+    .addParam('amount', 'Gross token amount in smallest units (e.g., 1 USDC = 1000000)')
     .setAction(
         async (
             args: {
-                dstEid: number
+                dstEid: string
                 srcToken: string
                 dstToken: string
                 merchant: string
                 amount: string
             },
-            hre: HardhatRuntimeEnvironment
+            hre: any
         ) => {
             const [signer] = await hre.ethers.getSigners()
             const deployment = await hre.deployments.get('MyOApp')
             const myOApp = await hre.ethers.getContractAt('MyOApp', deployment.address, signer)
 
-            console.log(`Initiating token payout from ${hre.network.name} to ${endpointIdToNetwork(args.dstEid)}`)
+            const dstEidNum = Number(args.dstEid)
+            console.log(`Initiating token payout from ${hre.network.name} to ${endpointIdToNetwork(dstEidNum)}`)
             console.log(`MyOApp:   ${deployment.address}`)
             console.log(`Signer:   ${signer.address}`)
             console.log(`SrcToken: ${args.srcToken}`)
@@ -44,12 +41,28 @@ task(
             const optionsHex = Options.newOptions().addExecutorLzReceiveOption(150000, 0).toHex()
             console.log(`Options:  ${optionsHex} (gas=${150000})`)
 
+            // Helper: encode address to bytes32 by dstEid
+            const toBytes32 = (value: string): string => {
+                if (dstEidNum === 40168) {
+                    // Solana: base58 -> 32 bytes
+                    const bytes = new PublicKey(value).toBytes()
+                    if (bytes.length !== 32) throw new Error('Solana pubkey must be 32 bytes')
+                    return '0x' + Buffer.from(bytes).toString('hex')
+                } else {
+                    // EVM: address -> left-padded bytes32
+                    return hre.ethers.utils.hexZeroPad(value, 32)
+                }
+            }
+
+            const dstToken32 = toBytes32(args.dstToken)
+            const merchant32 = toBytes32(args.merchant)
+
             // 1) Quote message fee
             console.log('Quoting LayerZero message fee...')
             const fee = await myOApp.quotePayoutToken(
-                args.dstEid,
-                args.dstToken,
-                args.merchant,
+                dstEidNum,
+                dstToken32,
+                merchant32,
                 args.amount,
                 optionsHex,
                 false
@@ -59,10 +72,10 @@ task(
             // 2) Send request (caller must have approved srcToken to MyOApp for at least amount)
             console.log('Sending requestPayoutToken...')
             const tx: ContractTransaction = await myOApp.requestPayoutToken(
-                args.dstEid,
+                dstEidNum,
                 args.srcToken,
-                args.dstToken,
-                args.merchant,
+                dstToken32,
+                merchant32,
                 args.amount,
                 optionsHex,
                 {

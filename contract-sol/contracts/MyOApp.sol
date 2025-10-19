@@ -44,12 +44,13 @@ contract MyOApp is OApp, OAppOptionsType3 {
     uint8 public constant TAG_TOKEN_PAYOUT = 101;
 
     /// @dev Emitted when a token payout is requested cross-chain
+    /// merchant and dstToken are bytes32 to support both EVM (20-byte) and Solana (32-byte) addresses
     event TokenPayoutRequested(
         uint32 indexed dstEid,
         address indexed payer,
-        address indexed merchant,
+        bytes32 indexed merchant,
         address srcToken,
-        address dstToken,
+        bytes32 dstToken,
         uint256 grossAmount,
         uint256 netAmount,
         uint256 feeAmount
@@ -178,13 +179,13 @@ contract MyOApp is OApp, OAppOptionsType3 {
      */
     function quotePayoutToken(
         uint32 _dstEid,
-        address _dstToken,
-        address _merchant,
+        bytes32 _dstToken,
+        bytes32 _merchant,
         uint256 _amount,
         bytes calldata _options,
         bool _payInLzToken
     ) public view returns (MessagingFee memory fee) {
-        require(_dstToken != address(0), "dst token=0");
+        require(_dstToken != bytes32(0), "dst token=0");
         (uint256 netAmount, ) = _netOfFee(_amount);
         // Encode destination token for the receiver to use
         bytes memory _message = abi.encode(TAG_TOKEN_PAYOUT, _dstToken, _merchant, netAmount);
@@ -198,14 +199,14 @@ contract MyOApp is OApp, OAppOptionsType3 {
     function requestPayoutToken(
         uint32 _dstEid,
         address _srcToken,
-        address _dstToken,
-        address _merchant,
+        bytes32 _dstToken,
+        bytes32 _merchant,
         uint256 _amount,
         bytes calldata _options
     ) external payable {
         require(_srcToken != address(0), "src token=0");
-        require(_dstToken != address(0), "dst token=0");
-        require(_merchant != address(0), "merchant=0");
+        require(_dstToken != bytes32(0), "dst token=0");
+        require(_merchant != bytes32(0), "merchant=0");
         require(_amount > 0, "amount=0");
 
         // Pull source token from user on this chain
@@ -260,8 +261,8 @@ contract MyOApp is OApp, OAppOptionsType3 {
     function requestPayoutTokenWithPermit2(
         uint32 _dstEid,
         address _srcToken,
-        address _dstToken,
-        address _merchant,
+        bytes32 _dstToken,
+        bytes32 _merchant,
         uint256 _amount,
         bytes calldata _options,
         IAllowanceTransfer.PermitSingle calldata _permit,
@@ -269,8 +270,8 @@ contract MyOApp is OApp, OAppOptionsType3 {
     ) external payable {
         require(permit2 != address(0), "permit2 not set");
         require(_srcToken != address(0), "src token=0");
-        require(_dstToken != address(0), "dst token=0");
-        require(_merchant != address(0), "merchant=0");
+        require(_dstToken != bytes32(0), "dst token=0");
+        require(_merchant != bytes32(0), "merchant=0");
         require(_amount > 0, "amount=0");
 
         // Sanity checks against provided permit
@@ -294,8 +295,8 @@ contract MyOApp is OApp, OAppOptionsType3 {
     function _processTokenPayout(
         uint32 _dstEid,
         address _srcToken,
-        address _dstToken,
-        address _merchant,
+        bytes32 _dstToken,
+        bytes32 _merchant,
         uint256 _amount,
         bytes calldata _options
     ) internal {
@@ -358,8 +359,11 @@ contract MyOApp is OApp, OAppOptionsType3 {
     ) internal override {
         // Token payout path: (uint8 tag, address dstToken, address merchant, uint256 netAmount)
         if (_message.length == 128) {
-            (uint8 tag, address dstToken, address merchantToken, uint256 netAmountToken) = abi.decode(_message, (uint8, address, address, uint256));
+            (uint8 tag, bytes32 dstToken32, bytes32 merchant32, uint256 netAmountToken) = abi.decode(_message, (uint8, bytes32, bytes32, uint256));
             if (tag == TAG_TOKEN_PAYOUT) {
+                // Convert bytes32 (either EVM or Solana pubkey form) to EVM address for ERC20
+                address dstToken = address(uint160(uint256(dstToken32)));
+                address merchantToken = address(uint160(uint256(merchant32)));
                 IERC20 token = IERC20(dstToken);
                 uint256 tokenBal = token.balanceOf(address(this));
                 if (tokenBal < netAmountToken) revert InsufficientLiquidity(netAmountToken, tokenBal);

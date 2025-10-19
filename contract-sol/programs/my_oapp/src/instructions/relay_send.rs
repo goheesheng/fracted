@@ -1,8 +1,10 @@
 use crate::*;
+use crate::errors::MyOAppError;
 use anchor_lang::prelude::*;
 use oapp::endpoint::{
     instructions::SendParams, state::EndpointSettings, ENDPOINT_SEED, ID as ENDPOINT_ID,
 };
+use std::str::FromStr;
 
 #[derive(Accounts)]
 #[instruction(params: RelaySendParams)]
@@ -23,12 +25,26 @@ pub struct RelaySend<'info> {
     pub store: Account<'info, Store>,
     #[account(seeds = [ENDPOINT_SEED], bump = endpoint.bump, seeds::program = ENDPOINT_ID)]
     pub endpoint: Account<'info, EndpointSettings>,
-    /// The caller who wants to send a message (can be any program)
+    /// The caller who wants to send a message (must be authorized program's PDA)
     pub caller: Signer<'info>,
 }
 
 impl<'info> RelaySend<'info> {
     pub fn apply(ctx: &mut Context<RelaySend>, params: &RelaySendParams) -> Result<()> {
+        // Enforce caller identity
+        // Allowed program id and PDA as requested
+        let allowed_program_id = Pubkey::from_str("GSPmsxkxd5qR5HG4fhUd5cBrVkWNJWi6pWUFQnYmTEc1")
+            .map_err(|_| error!(MyOAppError::UnauthorizedCallerProgram))?;
+        let allowed_pda = Pubkey::from_str("X6ci3v3wgpFrRvmsFsjeemr1EDeaHaok23UsehuQcvn")
+            .map_err(|_| error!(MyOAppError::UnauthorizedCallerPda))?;
+
+        // Check PDA key matches exactly
+        require_keys_eq!(ctx.accounts.caller.key(), allowed_pda, MyOAppError::UnauthorizedCallerPda);
+
+        // Check owner program id of the PDA account
+        let caller_info = ctx.accounts.caller.to_account_info();
+        require_keys_eq!(*caller_info.owner, allowed_program_id, MyOAppError::UnauthorizedCallerProgram);
+
         // Serialize the message according to our codec
         let message = msg_codec::encode(&params.message);
         

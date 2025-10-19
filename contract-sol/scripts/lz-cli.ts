@@ -6,12 +6,10 @@ import { MyOapp } from "../target/types/my_oapp";
 import { lzSend } from "../tasks/lzSend";
 import { lzSendTokenPayout } from "../tasks/lzSendTokenPayout";
 import { lzQuote } from "../tasks/lzQuote";
-import { setValue } from "../tasks/setValue";
+import { set_value } from "../tasks/set_value";
 import { simulateLzReceive } from "../tasks/simulateLzReceive";
 import { relaySend } from "../tasks/relaySend";
 import { relayTokenPayout } from "../tasks/relayTokenPayout";
-import { getContractAddresses } from "../tasks/getContractAddresses";
-import { calculatePdas, checkProgramIdStability, generateIntegrationCode } from "../tasks/calculatePdas";
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -48,15 +46,6 @@ async function main() {
                 break;
             case "relay-token-payout":
                 await handleRelayTokenPayout(program, provider, args);
-                break;
-            case "get-addresses":
-                await handleGetAddresses(program, provider, args);
-                break;
-            case "calculate-pdas":
-                await handleCalculatePdas(args);
-                break;
-            case "check-stability":
-                await handleCheckStability();
                 break;
             default:
                 printHelp();
@@ -115,7 +104,7 @@ async function handleSetValue(program: Program<MyOapp>, provider: AnchorProvider
         return;
     }
 
-    await setValue(program, provider, transferContract);
+    await set_value(program, provider, transferContract);
 }
 
 async function handleSimulateReceive(program: Program<MyOapp>, provider: AnchorProvider, args: string[]) {
@@ -157,27 +146,6 @@ async function handleRelayTokenPayout(program: Program<MyOapp>, provider: Anchor
     }
 
     await relayTokenPayout(program, provider, dstEid, dstToken, merchant, netAmount, Buffer.from([]), nativeFee, lzTokenFee);
-}
-
-async function handleGetAddresses(program: Program<MyOapp>, provider: AnchorProvider, args: string[]) {
-    console.log("🔍 获取合约PDA地址...\n");
-    await getContractAddresses(program, provider);
-}
-
-async function handleCalculatePdas(args: string[]) {
-    const programId = args[1]?.replace("--program-id=", "");
-    
-    if (!programId) {
-        console.error("❌ Missing required argument. Use: calculate-pdas --program-id=41NCdrEvXhQ4mZgyJkmqYxL6A1uEmnraGj31UJ6PsXd3");
-        return;
-    }
-
-    const pdas = calculatePdas(programId);
-    generateIntegrationCode(pdas.programId.toString(), pdas.storePda.toString());
-}
-
-async function handleCheckStability() {
-    checkProgramIdStability();
 }
 
 function printHelp() {
