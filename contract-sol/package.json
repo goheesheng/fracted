@@ -27,7 +27,8 @@
     "lz:relay-token-payout": "ts-node scripts/lz-cli.ts relay-token-payout",
     "lz:get-addresses": "ts-node scripts/lz-cli.ts get-addresses",
     "lz:calculate-pdas": "ts-node scripts/lz-cli.ts calculate-pdas",
-    "lz:check-stability": "ts-node scripts/lz-cli.ts check-stability"
+    "lz:check-stability": "ts-node scripts/lz-cli.ts check-stability",
+    "lz:call-receive": "ts-node scripts/call_lz_receive.ts"
   },
   "resolutions": {
     "ethers": "^5.7.2",

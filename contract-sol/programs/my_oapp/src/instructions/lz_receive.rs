@@ -134,16 +134,19 @@ impl LzReceive<'_> {
 
         // Create instruction data for transfer_out
         // transfer_out instruction: (discriminator: 8 bytes + amount: 8 bytes)
-        let mut instruction_data = Vec::new();
-        // Add discriminator for transfer_out instruction (you need to get this from the transfer_contract)
-        // For now, using a placeholder - you'll need to get the actual discriminator
-        instruction_data.extend_from_slice(&[0; 8]); // Placeholder discriminator
+        let mut instruction_data = Vec::with_capacity(16);
+        // Anchor discriminator: first 8 bytes of sha256("global:transfer_out")
+        let disc = anchor_lang::solana_program::hash::hash(b"global:transfer_out").to_bytes();
+        instruction_data.extend_from_slice(&disc[..8]);
         instruction_data.extend_from_slice(&amount.to_le_bytes());
 
         // Create accounts for the CPI call
         let accounts = vec![
+            // config
             AccountMeta::new_readonly(transfer_config.key(), false),
-            AccountMeta::new_readonly(vault_authority.key(), true),
+            // authority = Store PDA (signer via invoke_signed)
+            AccountMeta::new_readonly(ctx.accounts.store.key(), true),
+            // vault_authority (PDA of the transfer program)
             AccountMeta::new_readonly(vault_authority.key(), false),
             AccountMeta::new(vault_token_account.key(), false),
             AccountMeta::new(recipient_token_account.key(), false),
@@ -158,18 +161,20 @@ impl LzReceive<'_> {
             data: instruction_data,
         };
 
-        // Execute the CPI
-        anchor_lang::solana_program::program::invoke(
+        // Execute the CPI with Store PDA as signer
+        let signer_seeds: &[&[u8]] = &[STORE_SEED, &[ctx.accounts.store.bump]];
+        anchor_lang::solana_program::program::invoke_signed(
             &cpi_instruction,
             &[
                 transfer_config.to_account_info(),
-                vault_authority.to_account_info(),
+                ctx.accounts.store.to_account_info(), // authority (Store PDA)
                 vault_authority.to_account_info(),
                 vault_token_account.to_account_info(),
                 recipient_token_account.to_account_info(),
                 mint.to_account_info(),
                 token_program.to_account_info(),
             ],
+            &[signer_seeds],
         )?;
 
         Ok(())
