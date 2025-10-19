@@ -472,11 +472,14 @@ window.addEventListener('load', async () => {
         log('Connecting to Phantom wallet...')
         $('walletInfo').textContent = 'Connecting to Phantom...'
         
-        const response = await window.solana.connect()
+        const response = await window.solana.connect({ onlyIfTrusted: false })
         const publicKey = response.publicKey.toString()
         
         $('walletInfo').textContent = `Connected: ${publicKey.slice(0, 6)}...${publicKey.slice(-4)}`
         log(`Phantom wallet connected: ${publicKey}`)
+        
+        // Update button states
+        updateWalletButtonStates(true)
         return
       }
       
@@ -508,12 +511,16 @@ window.addEventListener('load', async () => {
       log('Requesting account access...')
       $('walletInfo').textContent = 'Connecting...'
       
+      // Request account access
       await window.ethereum.request({ method: 'eth_requestAccounts' })
       provider = new ethers.providers.Web3Provider(window.ethereum)
       signer = provider.getSigner()
       const addr = await signer.getAddress()
       $('walletInfo').textContent = `Connected: ${addr.slice(0, 6)}...${addr.slice(-4)}`
       log('Wallet connected successfully')
+      
+      // Update button states
+      updateWalletButtonStates(true)
     } catch (e) {
       log(`Connect error: ${e.message || e}`)
       if (e.code === 4001) {
@@ -567,6 +574,9 @@ window.addEventListener('load', async () => {
   $('payBtn').addEventListener('click', async () => {
     try {
       setButtonLoading(true)
+      
+      // Record start time for transaction timing
+      const startTime = Date.now()
       
       const networkKey = $('srcNetwork').value
       
@@ -663,14 +673,173 @@ window.addEventListener('load', async () => {
       const rc = await tx.wait()
       log(`Confirmed in block ${rc.blockNumber}`)
       
-      // Show success message
-      alert('Payment successful! Transaction confirmed.')
+      // Calculate transaction time
+      const endTime = Date.now()
+      const transactionTime = ((endTime - startTime) / 1000).toFixed(2)
+      
+      // Show success modal with transaction details
+      showPaymentSuccess(tx.hash, transactionTime, rc.blockNumber, networkKey)
       
     } catch (e) {
       log(`Pay error: ${e.message || e}`)
       alert(`Payment failed: ${e.message || e}`)
     } finally {
       setButtonLoading(false)
+    }
+  })
+
+  // Wallet button state management
+  function updateWalletButtonStates(isConnected) {
+    const connectBtn = document.getElementById('connectBtn')
+    const disconnectBtn = document.getElementById('disconnectBtn')
+    const switchWalletBtn = document.getElementById('switchWalletBtn')
+    
+    if (isConnected) {
+      connectBtn.style.display = 'none'
+      disconnectBtn.style.display = 'block'
+      switchWalletBtn.style.display = 'block'
+    } else {
+      connectBtn.style.display = 'block'
+      disconnectBtn.style.display = 'none'
+      switchWalletBtn.style.display = 'none'
+    }
+  }
+  
+  // Disconnect wallet function
+  async function disconnectWallet() {
+    try {
+      const selectedNetwork = $('srcNetwork').value
+      
+      if (selectedNetwork === 'solana-devnet') {
+        // For Solana, we can't truly disconnect, but we can clear the state
+        if (window.solana && window.solana.disconnect) {
+          await window.solana.disconnect()
+        }
+        log('Solana wallet disconnected')
+      } else {
+        // For Ethereum, clear the provider and signer
+        provider = null
+        signer = null
+        log('Ethereum wallet disconnected')
+      }
+      
+      // Reset wallet info
+      $('walletInfo').textContent = 'Wallet disconnected'
+      
+      // Update button states
+      updateWalletButtonStates(false)
+      
+      // Reset to initial state
+      setTimeout(() => {
+        updateWalletInfoDisplay()
+      }, 1000)
+      
+    } catch (e) {
+      log(`Disconnect error: ${e.message || e}`)
+      $('walletInfo').textContent = `Disconnect error: ${e.message || e}`
+    }
+  }
+  
+  // Switch wallet function
+  async function switchWallet() {
+    try {
+      const selectedNetwork = $('srcNetwork').value
+      
+      if (selectedNetwork === 'solana-devnet') {
+        // For Solana, request to connect again (this will show account selection)
+        if (window.solana && window.solana.connect) {
+          const response = await window.solana.connect({ onlyIfTrusted: false })
+          const publicKey = response.publicKey.toString()
+          $('walletInfo').textContent = `Connected: ${publicKey.slice(0, 6)}...${publicKey.slice(-4)}`
+          log(`Switched to Solana wallet: ${publicKey}`)
+        }
+      } else {
+        // For Ethereum, try to switch accounts using MetaMask's account switching
+        try {
+          // Try to trigger account switching by requesting permissions
+          await window.ethereum.request({
+            method: 'wallet_requestPermissions',
+            params: [{ eth_accounts: {} }]
+          })
+        } catch (e) {
+          // If permission request fails, try direct account request
+          log('Permission request failed, trying direct account request')
+          await window.ethereum.request({ method: 'eth_requestAccounts' })
+        }
+        
+        // Update provider and signer with new account
+        provider = new ethers.providers.Web3Provider(window.ethereum)
+        signer = provider.getSigner()
+        const addr = await signer.getAddress()
+        $('walletInfo').textContent = `Connected: ${addr.slice(0, 6)}...${addr.slice(-4)}`
+        log(`Switched to Ethereum wallet: ${addr}`)
+      }
+      
+    } catch (e) {
+      log(`Switch wallet error: ${e.message || e}`)
+      if (e.code === 4001) {
+        $('walletInfo').textContent = 'Account switch rejected by user'
+      } else {
+        $('walletInfo').textContent = `Switch error: ${e.message || e}`
+      }
+    }
+  }
+  
+  // Event listeners for new buttons
+  document.getElementById('disconnectBtn').addEventListener('click', disconnectWallet)
+  document.getElementById('switchWalletBtn').addEventListener('click', switchWallet)
+
+  // Payment success modal functions
+  function showPaymentSuccess(txHash, transactionTime, blockNumber, networkKey) {
+    // Update modal content
+    document.getElementById('successTxHash').textContent = txHash
+    document.getElementById('successTxTime').textContent = `${transactionTime} seconds`
+    document.getElementById('successTxBlock').textContent = blockNumber
+    
+    // Show modal
+    document.getElementById('paymentSuccessModal').style.display = 'flex'
+    
+    // Store network key for explorer link
+    document.getElementById('paymentSuccessModal').dataset.network = networkKey
+  }
+  
+  function hidePaymentSuccess() {
+    document.getElementById('paymentSuccessModal').style.display = 'none'
+  }
+  
+  // Success modal event listeners
+  document.getElementById('viewOnExplorer').addEventListener('click', function() {
+    const networkKey = document.getElementById('paymentSuccessModal').dataset.network
+    const txHash = document.getElementById('successTxHash').textContent
+    
+    let explorerUrl = ''
+    switch (networkKey) {
+      case 'arbitrum-sepolia':
+        explorerUrl = `https://sepolia.arbiscan.io/tx/${txHash}`
+        break
+      case 'base-sepolia':
+        explorerUrl = `https://sepolia.basescan.org/tx/${txHash}`
+        break
+      case 'solana-devnet':
+        explorerUrl = `https://explorer.solana.com/tx/${txHash}?cluster=devnet`
+        break
+      default:
+        explorerUrl = `https://etherscan.io/tx/${txHash}`
+    }
+    
+    window.open(explorerUrl, '_blank')
+  })
+  
+  document.getElementById('exitPayment').addEventListener('click', function() {
+    hidePaymentSuccess()
+    // Optionally redirect to home page or close the payment window
+    window.location.href = '/'
+  })
+  
+  // Close modal when clicking outside
+  document.getElementById('paymentSuccessModal').addEventListener('click', function(e) {
+    if (e.target === this) {
+      hidePaymentSuccess()
     }
   })
 

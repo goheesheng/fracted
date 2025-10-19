@@ -115,6 +115,8 @@
 
           <div class="wallet-section">
             <button id="connectBtn" class="wallet-btn">Connect Wallet</button>
+            <button id="disconnectBtn" class="wallet-btn secondary" style="display: none;">Disconnect</button>
+            <button id="switchWalletBtn" class="wallet-btn secondary" style="display: none;">Switch Account</button>
             <div id="walletInfo" class="wallet-info"></div>
           </div>
 
@@ -123,6 +125,43 @@
             <button id="payBtn" class="action-btn primary">Pay</button>
           </div>
 
+        </div>
+      </div>
+    </div>
+
+    <!-- Payment Success Modal -->
+    <div id="paymentSuccessModal" class="success-modal" style="display: none;">
+      <div class="success-content">
+        <div class="success-header">
+          <div class="success-icon">✅</div>
+          <h2>Payment Successful!</h2>
+        </div>
+        
+        <div class="success-details">
+          <div class="detail-item">
+            <label>Transaction Hash:</label>
+            <div class="tx-hash" id="successTxHash">-</div>
+          </div>
+          
+          <div class="detail-item">
+            <label>Transaction Time:</label>
+            <div class="tx-time" id="successTxTime">-</div>
+          </div>
+          
+          <div class="detail-item">
+            <label>Block Number:</label>
+            <div class="tx-block" id="successTxBlock">-</div>
+          </div>
+        </div>
+        
+        <div class="thank-you-message">
+          <h3>Thank you for using Fracted!</h3>
+          <p>Your payment has been processed securely and efficiently.</p>
+        </div>
+        
+        <div class="success-actions">
+          <button id="viewOnExplorer" class="action-btn secondary">View on Explorer</button>
+          <button id="exitPayment" class="action-btn primary">Exit</button>
         </div>
       </div>
     </div>
