@@ -135,12 +135,18 @@
         <div class="success-header">
           <div class="success-icon">✅</div>
           <h2>Payment Successful!</h2>
+          <div class="progress-bar">
+            <div class="progress-fill" id="progressFill"></div>
+          </div>
         </div>
         
         <div class="success-details">
           <div class="detail-item">
             <label>Transaction Hash:</label>
-            <div class="tx-hash" id="successTxHash">-</div>
+            <div class="tx-hash-container">
+              <div class="tx-hash" id="successTxHash">-</div>
+              <button class="copy-btn" id="copyTxHash" title="Copy Transaction Hash">📋</button>
+            </div>
           </div>
           
           <div class="detail-item">

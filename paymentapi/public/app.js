@@ -788,19 +788,180 @@ window.addEventListener('load', async () => {
   // Event listeners for new buttons
   document.getElementById('disconnectBtn').addEventListener('click', disconnectWallet)
   document.getElementById('switchWalletBtn').addEventListener('click', switchWallet)
+  
+  // Copy functionality
+  document.getElementById('copyTxHash').addEventListener('click', async function() {
+    const txHash = document.getElementById('successTxHash').textContent
+    try {
+      await navigator.clipboard.writeText(txHash)
+      showCopyFeedback(this, 'Copied!')
+    } catch (err) {
+      // Fallback for older browsers
+      const textArea = document.createElement('textarea')
+      textArea.value = txHash
+      document.body.appendChild(textArea)
+      textArea.select()
+      document.execCommand('copy')
+      document.body.removeChild(textArea)
+      showCopyFeedback(this, 'Copied!')
+    }
+  })
+  
+  // Copy feedback function
+  function showCopyFeedback(button, message) {
+    const originalText = button.textContent
+    button.textContent = message
+    button.style.background = 'linear-gradient(135deg, #10b981 0%, #059669 100%)'
+    
+    setTimeout(() => {
+      button.textContent = originalText
+      button.style.background = 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)'
+    }, 1500)
+  }
 
   // Payment success modal functions
   function showPaymentSuccess(txHash, transactionTime, blockNumber, networkKey) {
-    // Update modal content
-    document.getElementById('successTxHash').textContent = txHash
-    document.getElementById('successTxTime').textContent = `${transactionTime} seconds`
-    document.getElementById('successTxBlock').textContent = blockNumber
-    
-    // Show modal
+    // Show modal first
     document.getElementById('paymentSuccessModal').style.display = 'flex'
     
     // Store network key for explorer link
     document.getElementById('paymentSuccessModal').dataset.network = networkKey
+    
+    // Animate progress bar
+    animateProgressBar()
+    
+    // Typewriter effect for transaction details
+    setTimeout(() => {
+      typewriterEffect('successTxHash', txHash, 20) 
+    }, 1000)
+    setTimeout(() => {
+      typewriterEffect('successTxTime', `${transactionTime} seconds`, 80)
+    }, 2000)
+    setTimeout(() => {
+      typewriterEffect('successTxBlock', blockNumber.toString(), 100)
+    }, 3000)
+    
+    // Add particle explosion effect
+    setTimeout(() => {
+      createParticleExplosion()
+    }, 500)
+    
+    // Play success sound
+    playSuccessSound()
+  }
+  
+  // Progress bar animation
+  function animateProgressBar() {
+    const progressFill = document.getElementById('progressFill')
+    let progress = 0
+    
+    const interval = setInterval(() => {
+      progress += Math.random() * 15 + 5 // Random increment between 5-20
+      if (progress >= 100) {
+        progress = 100
+        clearInterval(interval)
+      }
+      progressFill.style.width = progress + '%'
+    }, 100)
+  }
+  
+  // Typewriter effect function
+  function typewriterEffect(elementId, text, speed = 100) {
+    const element = document.getElementById(elementId)
+    element.textContent = ''
+    element.style.borderRight = '2px solid #a855f7'
+    
+    let i = 0
+    const timer = setInterval(() => {
+      if (i < text.length) {
+        element.textContent += text.charAt(i)
+        i++
+      } else {
+        clearInterval(timer)
+        // Remove cursor after typing is complete
+        setTimeout(() => {
+          element.style.borderRight = 'none'
+        }, 1000)
+      }
+    }, speed)
+  }
+  
+  // Particle explosion effect
+  function createParticleExplosion() {
+    const modal = document.getElementById('paymentSuccessModal')
+    const rect = modal.getBoundingClientRect()
+    const centerX = rect.left + rect.width / 2
+    const centerY = rect.top + rect.height / 2
+    
+    for (let i = 0; i < 20; i++) {
+      const particle = document.createElement('div')
+      particle.className = 'success-particle'
+      particle.style.position = 'fixed'
+      particle.style.left = centerX + 'px'
+      particle.style.top = centerY + 'px'
+      particle.style.width = '4px'
+      particle.style.height = '4px'
+      particle.style.background = i % 2 === 0 ? '#a855f7' : '#06b6d4'
+      particle.style.borderRadius = '50%'
+      particle.style.pointerEvents = 'none'
+      particle.style.zIndex = '10001'
+      
+      document.body.appendChild(particle)
+      
+      // Animate particle
+      const angle = (i / 20) * Math.PI * 2
+      const velocity = 100 + Math.random() * 100
+      const endX = centerX + Math.cos(angle) * velocity
+      const endY = centerY + Math.sin(angle) * velocity
+      
+      particle.animate([
+        { 
+          transform: 'translate(0, 0) scale(1)',
+          opacity: 1
+        },
+        { 
+          transform: `translate(${endX - centerX}px, ${endY - centerY}px) scale(0)`,
+          opacity: 0
+        }
+      ], {
+        duration: 1500,
+        easing: 'cubic-bezier(0.4, 0, 0.2, 1)'
+      }).onfinish = () => {
+        particle.remove()
+      }
+    }
+  }
+  
+  // Success sound effect
+  function playSuccessSound() {
+    try {
+      // Create a simple success sound using Web Audio API
+      const audioContext = new (window.AudioContext || window.webkitAudioContext)()
+      
+      // Create a pleasant success chord
+      const frequencies = [523.25, 659.25, 783.99] // C5, E5, G5
+      
+      frequencies.forEach((freq, index) => {
+        const oscillator = audioContext.createOscillator()
+        const gainNode = audioContext.createGain()
+        
+        oscillator.connect(gainNode)
+        gainNode.connect(audioContext.destination)
+        
+        oscillator.frequency.setValueAtTime(freq, audioContext.currentTime)
+        oscillator.type = 'sine'
+        
+        gainNode.gain.setValueAtTime(0, audioContext.currentTime)
+        gainNode.gain.linearRampToValueAtTime(0.1, audioContext.currentTime + 0.1)
+        gainNode.gain.exponentialRampToValueAtTime(0.01, audioContext.currentTime + 0.5)
+        
+        oscillator.start(audioContext.currentTime + index * 0.1)
+        oscillator.stop(audioContext.currentTime + 0.5)
+      })
+    } catch (e) {
+      // Fallback: use a simple beep if Web Audio API is not available
+      console.log('Audio not available')
+    }
   }
   
   function hidePaymentSuccess() {
