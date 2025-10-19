@@ -20,7 +20,7 @@
       <div class="seller-content">
         <div class="title-section" style="margin-top: 16px;">
           <div class="logo">
-            <img src="/logo.png" alt="Fracted Logo" width="140" height="40" />
+            <img src="/logo.png" alt="Fracted Logo" width="140" height="40" id="fractedLogo" style="cursor: pointer;" />
           </div>
         </div>
 
@@ -76,6 +76,16 @@
         const qs = new URLSearchParams({ token: stable, amount: smallest, wallet }).toString()
         window.location.href = `/index.html?${qs}`
       })
+
+      // Fracted logo click handler
+      const fractedLogo = document.getElementById('fractedLogo')
+      if (fractedLogo) {
+        fractedLogo.addEventListener('click', function() {
+          // Navigate to main Fracted website
+          window.location.href = 'https://fracted.xyz/'
+          console.log('Navigating to Fracted main website...')
+        })
+      }
 
       // No reset button in unified style
     </script>

@@ -194,22 +194,14 @@
   </head>
   <body>
     <div class="generator-container">
-      <!-- Floating particles -->
-      <div class="particles">
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-        <div class="particle"></div>
-      </div>
+      
       
       <div class="generator-content">
         <div class="title-section">
           <h1 class="generator-title">
-            <img src="/logo.png" alt="Fracted" class="title-logo" />
-            <span id="dashboardBtn" class="dashboard-link">Dashboard</span>
+            <img src="/logo.png" alt="Fracted" class="title-logo" id="fractedLogo" />
           </h1>
+          <span id="dashboardBtn" class="dashboard-link">Dashboard</span>
         </div>
 
       <section class="card">
@@ -363,14 +355,27 @@
       document.getElementById('dstToken').value = ''
       document.getElementById('amount').value = ''
 
+      // Fracted logo click handler
+      const fractedLogo = document.getElementById('fractedLogo')
+      if (fractedLogo) {
+        fractedLogo.addEventListener('click', function() {
+          // Navigate to main Fracted website
+          window.location.href = 'https://fracted.xyz/'
+          console.log('Navigating to Fracted main website...')
+        })
+        
+        // Add cursor pointer style
+        fractedLogo.style.cursor = 'pointer'
+      }
+
       // Dashboard button click handler
       const dashboardBtn = document.getElementById('dashboardBtn')
       if (dashboardBtn) {
         dashboardBtn.addEventListener('click', function() {
-          // Open dashboard in new tab
-          const dashboardUrl = 'https://demo.fracted.xyz/dashboard/'
+          // Open dashboard login page in new tab
+          const dashboardUrl = 'https://demo.fracted.xyz/dashboard/login.html'
           window.open(dashboardUrl, '_blank')
-          console.log('Opening dashboard...')
+          console.log('Opening dashboard login page...')
         })
       }
     </script>

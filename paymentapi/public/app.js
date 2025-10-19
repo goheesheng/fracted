@@ -673,4 +673,14 @@ window.addEventListener('load', async () => {
       setButtonLoading(false)
     }
   })
+
+  // Fracted logo click handler
+  const fractedLogo = document.getElementById('fractedLogo')
+  if (fractedLogo) {
+    fractedLogo.addEventListener('click', function() {
+      // Navigate to main Fracted website
+      window.location.href = 'https://fracted.xyz/'
+      console.log('Navigating to Fracted main website...')
+    })
+  }
 })
