@@ -45,17 +45,7 @@ impl LzReceiveTypes<'_> {
             LzAccount { pubkey: peer, is_signer: false, is_writable: false }
         ];
 
-        // Append the additional accounts required for `Endpoint::clear`
-        let accounts_for_clear = get_accounts_for_clear(
-            ENDPOINT_ID,
-            &store,
-            params.src_eid,
-            &params.sender,
-            params.nonce,
-        );
-        accounts.extend(accounts_for_clear);
-
-        // If message is 128 bytes, it's a token payout - add transfer accounts
+        // If message is 128 bytes, add transfer accounts FIRST (these go into Option fields)
         if params.message.len() == 128 {
             let tag = params.message[31];
             if tag == 101 {
@@ -99,6 +89,16 @@ impl LzReceiveTypes<'_> {
                 accounts.push(LzAccount { pubkey: spl_token_program, is_signer: false, is_writable: false });
             }
         }
+
+        // Append the additional accounts required for `Endpoint::clear` AFTER transfer accounts
+        let accounts_for_clear = get_accounts_for_clear(
+            ENDPOINT_ID,
+            &store,
+            params.src_eid,
+            &params.sender,
+            params.nonce,
+        );
+        accounts.extend(accounts_for_clear);
 
         Ok(accounts)
     }

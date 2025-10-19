@@ -211,8 +211,8 @@ impl LzReceive<'_> {
         let accounts = vec![
             // config
             AccountMeta::new_readonly(transfer_config.key(), false),
-            // authority = Store PDA (signer via invoke_signed)
-            AccountMeta::new_readonly(ctx.accounts.store.key(), true),
+            // authority = Store PDA (signer via invoke_signed, must be mutable per callee contract)
+            AccountMeta::new(ctx.accounts.store.key(), true),
             // vault_authority (PDA of the transfer program)
             AccountMeta::new_readonly(vault_authority.key(), false),
             AccountMeta::new(vault_token_account.key(), false),
