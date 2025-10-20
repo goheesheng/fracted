@@ -23,8 +23,6 @@ pub struct RelaySend<'info> {
     #[account(seeds = [STORE_SEED], bump = store.bump)]
     /// OApp Store PDA that signs the send instruction
     pub store: Account<'info, Store>,
-    #[account(seeds = [ENDPOINT_SEED], bump = endpoint.bump, seeds::program = ENDPOINT_ID)]
-    pub endpoint: Account<'info, EndpointSettings>,
     /// The caller who wants to send a message (must be authorized program's PDA)
     pub caller: Signer<'info>,
 }
