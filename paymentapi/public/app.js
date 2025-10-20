@@ -4,7 +4,7 @@
 // Chain IDs
 const CHAINS = {
   'arbitrum-sepolia': {
-    chainId: '0x66EED', // 421614
+    chainId: '0x66EEE', // 421614
     chainName: 'Arbitrum Sepolia',
     nativeCurrency: { name: 'ETH', symbol: 'ETH', decimals: 18 },
     rpcUrls: ['https://sepolia-rollup.arbitrum.io/rpc'],
@@ -29,13 +29,13 @@ const CHAINS = {
 // Default token addresses per testnet (can be overridden by server /config)
 let TOKEN_ADDRESSES = {
   'arbitrum-sepolia': {
-    USDT: '',
+    USDT: '0x4dad09303a773353908f17254b276eE2bD51F0Ef',
     USDC: '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d',
     XUSD: '',
   },
   'base-sepolia': {
     USDT: '0x323e78f944A9a1FcF3a10efcC5319DBb0bB6e673',
-    USDC: '',
+    USDC: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
     XUSD: '',
   },
   'solana-devnet': {
