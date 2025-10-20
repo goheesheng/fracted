@@ -167,11 +167,11 @@
             type="text" 
             id="merchant-address" 
             class="form-input" 
-            placeholder="0x..." 
+            placeholder="0x... or Solana address" 
             required 
             autocomplete="off"
           />
-          <div class="address-hint">Enter your Ethereum wallet address (0x...)</div>
+          <div class="address-hint">Enter your wallet address (EVM: 0x... or Solana: Base58)</div>
         </div>
         
         <button type="submit" class="login-btn" id="login-btn">
@@ -202,8 +202,21 @@
         }
       }
       
-      function validateAddress(address) {
+      function validateEVMAddress(address) {
         return /^0x[a-fA-F0-9]{40}$/.test(address);
+      }
+      
+      function validateSolanaAddress(address) {
+        // Solana 地址是 32-44 字符的 Base58 编码
+        if (address.length < 32 || address.length > 44) {
+          return false;
+        }
+        // Base58 字符集（不包含 0、O、I、l）
+        return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
+      }
+      
+      function validateAddress(address) {
+        return validateEVMAddress(address) || validateSolanaAddress(address);
       }
       
       function showError(message) {
@@ -230,27 +243,40 @@
         }
         
         if (!validateAddress(address)) {
-          showError('Please enter a valid Ethereum address (0x...)');
+          showError('Please enter a valid wallet address (EVM: 0x... or Solana: Base58)');
           return;
         }
         
         setLoading(true);
         
         try {
-          // Check if merchant exists by making a test API call
-          const response = await fetch(`/dashboard/api/merchant/${address.toLowerCase()}/payouts`, {
-            method: 'GET',
+          // 对于 EVM 地址使用小写，Solana 地址保持原样
+          const normalizedAddr = validateEVMAddress(address) ? address.toLowerCase() : address;
+          
+          // 使用新的登录 API
+          const loginResponse = await fetch('/auth/login', {
+            method: 'POST',
             headers: {
-              'Accept': 'application/json'
-            }
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              address: normalizedAddr,
+              role: 'merchant'
+            })
           });
           
-          if (response.ok) {
-            // Merchant exists, redirect to dashboard
-            localStorage.setItem('merchantAddress', address.toLowerCase());
-            window.location.href = `merchant-dashboard.html?address=${encodeURIComponent(address.toLowerCase())}`;
-          } else if (response.status === 404) {
-            showError('Merchant address not found. Please check your address or contact support.');
+          if (loginResponse.ok) {
+            const data = await loginResponse.json();
+            // 保存 token 和地址信息
+            localStorage.setItem('merchantToken', data.token);
+            localStorage.setItem('merchantAddress', normalizedAddr);
+            // 跳转到商家 Dashboard
+            window.location.href = 'merchant-dashboard.html';
+          } else if (loginResponse.status === 403) {
+            showError('Address not authorized for merchant access. Please check your address or contact support.');
+          } else if (loginResponse.status === 400) {
+            const errorText = await loginResponse.text();
+            showError(errorText || 'Invalid address format. Please check your input.');
           } else {
             showError('Unable to verify merchant address. Please try again.');
           }
@@ -262,13 +288,14 @@
         }
       });
       
-      // Auto-format address input
+      // Auto-format address input (only for EVM addresses)
       addressInput.addEventListener('input', (e) => {
-        let value = e.target.value;
-        if (value && !value.startsWith('0x')) {
+        let value = e.target.value.trim();
+        // 只对看起来像 EVM 地址的输入自动添加 0x
+        if (value && !value.startsWith('0x') && /^[a-fA-F0-9]/.test(value) && value.length <= 42) {
           value = '0x' + value;
+          e.target.value = value;
         }
-        e.target.value = value;
       });
       
       loadTheme();

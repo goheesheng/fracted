@@ -15,6 +15,11 @@
       </div>
       <h1 class="page-title">Transaction Monitoring Dashboard</h1>
       <div class="header-actions">
+        <div class="user-info" id="user-info" style="display: none;">
+          <span class="user-role" id="user-role"></span>
+          <span class="user-address" id="user-address"></span>
+          <button id="logout-btn" class="logout-btn">Logout</button>
+        </div>
         <div class="status" id="status">Loading...</div>
         <label class="theme-toggle" title="Toggle dark mode">
           <input type="checkbox" id="theme-switch" />
@@ -69,6 +74,33 @@
     </main>
   </div>
 
+  <!-- 管理员登录模态框 -->
+  <div class="modal" id="login-modal" aria-hidden="false" role="dialog" aria-modal="true">
+    <div class="modal-backdrop" id="login-backdrop"></div>
+    <div class="modal-content" role="document" style="max-width: 450px;">
+      <div class="modal-header">
+        <h3>Admin Login Required</h3>
+      </div>
+      <div class="modal-body">
+        <form id="login-form">
+          <div class="form-group">
+            <label for="admin-address">Admin Address:</label>
+            <input type="text" id="admin-address" class="form-input" placeholder="0x... or Solana address" required />
+          </div>
+          <div class="form-actions">
+            <button type="submit" id="login-btn" class="login-btn">Login as Admin</button>
+          </div>
+        </form>
+        <div class="login-hint" style="margin-top: 16px; padding: 12px; background: rgba(37, 99, 235, 0.05); border-radius: 6px; border: 1px solid rgba(37, 99, 235, 0.1);">
+          <p style="margin: 4px 0; font-size: 12px; color: var(--muted);"><strong>Example Addresses:</strong></p>
+          <p style="margin: 4px 0; font-size: 11px; color: var(--muted);"><strong>Admin (EVM):</strong><br><code style="background: rgba(0, 0, 0, 0.05); padding: 2px 4px; border-radius: 3px;">0x27f9B6A7C1Fd66AC4D0e76a2d43B35e8590165f6</code></p>
+          <p style="margin: 4px 0; font-size: 11px; color: var(--muted);"><strong>Merchant (Solana):</strong><br><code style="background: rgba(0, 0, 0, 0.05); padding: 2px 4px; border-radius: 3px;">6H7AYKpUHnMuca92gc82oArXC48igkLi14mcZh9XNLpp</code></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 交易详情模态框 -->
   <div class="modal" id="modal" aria-hidden="true" role="dialog" aria-modal="true">
     <div class="modal-backdrop" id="modal-backdrop"></div>
     <div class="modal-content" role="document">

@@ -1,6 +1,7 @@
 (function () {
   const POLL_MS = 5000;
   let currentMerchantAddress = '';
+  let merchantToken = '';
   let currentList = [];
 
   const el = {
@@ -35,6 +36,13 @@
     return '$' + Number(num).toLocaleString(undefined, { maximumFractionDigits: 2 });
   }
 
+  function short(v) {
+    if (!v) return '-';
+    const s = String(v);
+    if (s.length <= 12) return s;
+    return s.slice(0, 6) + '…' + s.slice(-4);
+  }
+
   function getSearchFiltered(list) {
     const q = (el.searchInput && el.searchInput.value || '').trim().toLowerCase();
     if (!q) return list;
@@ -64,8 +72,20 @@
     const controller = new AbortController();
     const id = setTimeout(() => controller.abort(), timeout);
     try {
-      const res = await fetch(url, { signal: controller.signal, headers: { 'Accept': 'application/json' } });
-      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const headers = { 'Accept': 'application/json' };
+      // 如果有 token，添加认证头
+      if (merchantToken) {
+        headers['Authorization'] = `Bearer ${merchantToken}`;
+      }
+      const res = await fetch(url, { signal: controller.signal, headers });
+      if (!res.ok) {
+        if (res.status === 401) {
+          // Token 无效，跳转到登录页
+          logout();
+          throw new Error('Unauthorized');
+        }
+        throw new Error('HTTP ' + res.status);
+      }
       const data = await res.json();
       return data;
     } finally {
@@ -77,8 +97,9 @@
     let gross = 0;
     let net = 0;
     for (const tx of list) {
-      gross += Number(tx.GrossAmount || 0);
-      net += Number(tx.NetAmount || 0);
+      // 使用 USD 格式化后的值
+      gross += Number(tx.GrossAmountUSD || 0);
+      net += Number(tx.NetAmountUSD || 0);
     }
     return { gross, net };
   }
@@ -87,7 +108,15 @@
     const map = new Map();
     for (const tx of list) {
       const id = tx[key] || '未知';
-      const amt = Number(tx[amountField] || 0);
+      // 使用 USD 格式化字段
+      let amt = 0;
+      if (amountField === 'NetAmount') {
+        amt = Number(tx.NetAmountUSD || 0);
+      } else if (amountField === 'GrossAmount') {
+        amt = Number(tx.GrossAmountUSD || 0);
+      } else {
+        amt = Number(tx[amountField] || 0);
+      }
       map.set(id, (map.get(id) || 0) + amt);
     }
     const arr = Array.from(map, ([name, value]) => ({ name, value }));
@@ -113,6 +142,12 @@
     }
   }
 
+  // LayerZero Endpoint IDs
+  const EID_BASE_SEPOLIA = 40245;
+  const EID_ARB_SEPOLIA = 40231;
+  const EID_SOLANA_DEVNET = 40168;
+  const EID_SOLANA_MAINNET = 30168;
+
   // Token recognition map (extend as needed)
   const TOKEN_MAP = {
     // Base mainnet
@@ -120,11 +155,19 @@
     '0xd9aaec6eab5f9f0a7f0dd7c39c3f1b3aa1c5f6b9': { symbol: 'USDbC', chain: 'Base' },
     // Base Sepolia
     '0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d': { symbol: 'USDC', chain: 'Base Sepolia' },
-    '0x323e78f944A9a1FcF3a10efcC5319DBb0bB6e673': { symbol: 'USDT', chain: 'Base Sepolia' },
+    '0x036cbd53842c5426634e7929541ec2318f3dcf7e': { symbol: 'USDC', chain: 'Base Sepolia' },
+    '0x323e78f944a9a1fcf3a10efcc5319dbb0bb6e673': { symbol: 'USDT', chain: 'Base Sepolia' },
     // Arbitrum Sepolia
-    '0x9aa7fEc87CA69695Dd1f879567CcF49F3ba417E2': { symbol: 'USDT', chain: 'Arb Sepolia' },
+    '0x9aa7fec87ca69695dd1f879567ccf49f3ba417e2': { symbol: 'USDT', chain: 'Arb Sepolia' },
     '0x0f3a3d8e7c8b1e3b5f0b3d3c1a9f4f0a9e3b1c2d': { symbol: 'USDC', chain: 'Arb Sepolia' },
-    '0xdAC17F958D2ee523a2206206994597C13D831ec7': { symbol: 'USDT', chain: 'Arb Sepolia' },
+    '0xdac17f958d2ee523a2206206994597c13d831ec7': { symbol: 'USDT', chain: 'Arb Sepolia' },
+    '0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d': { symbol: 'USDC', chain: 'Arb Sepolia' },
+    // Solana Devnet
+    'solana:devnet:usdc': { symbol: 'USDC', chain: 'Solana Devnet' },
+    'solana:devnet:usdt': { symbol: 'USDT', chain: 'Solana Devnet' },
+    // Solana Mainnet
+    'solana:mainnet:usdc': { symbol: 'USDC', chain: 'Solana Mainnet' },
+    'solana:mainnet:usdt': { symbol: 'USDT', chain: 'Solana Mainnet' },
   };
 
   function getTokenInfo(addr) {
@@ -166,7 +209,8 @@
     const recent = [...list].sort((a, b) => (b.__ts || 0) - (a.__ts || 0)).slice(0, 5);
     
     for (const tx of recent) {
-      const token = getTokenInfo(tx.DstToken) || getTokenInfo(tx.SrcToken);
+      // 优先检查 SrcToken（源链代币），再检查 DstToken（目标链代币）
+      const token = getTokenInfo(tx.SrcToken) || getTokenInfo(tx.DstToken);
       const tokenHTML = token ? tokenPillHTML(token.symbol, token.chain) : '<span class="badge badge-default">N/A</span>';
       const hue = hueFromString(String(tx.Payer || ''));
       
@@ -178,7 +222,7 @@
           <span class="mono">${short(tx.Payer)}</span>
         </div>
         <div class="value">
-          ${formatMoney(Number(tx.NetAmount || 0))}
+          $${(tx.NetAmountUSD || '0.00')}
           ${tokenHTML}
         </div>
       `;
@@ -191,11 +235,13 @@
     const tokenMap = new Map();
     
     for (const tx of list) {
-      const token = getTokenInfo(tx.DstToken) || getTokenInfo(tx.SrcToken);
+      // 优先检查 SrcToken（源链代币），再检查 DstToken（目标链代币）
+      const token = getTokenInfo(tx.SrcToken) || getTokenInfo(tx.DstToken);
       if (token) {
         const key = `${token.symbol}-${token.chain}`;
         const current = tokenMap.get(key) || { symbol: token.symbol, chain: token.chain, amount: 0, count: 0 };
-        current.amount += Number(tx.NetAmount || 0);
+        // 使用 USD 格式化后的值
+        current.amount += Number(tx.NetAmountUSD || 0);
         current.count += 1;
         tokenMap.set(key, current);
       }
@@ -246,16 +292,19 @@
     el.ongoingEmpty.hidden = true;
 
     for (const tx of list) {
-      const token = getTokenInfo(tx.DstToken) || getTokenInfo(tx.SrcToken);
+      // 优先检查 SrcToken（源链代币），再检查 DstToken（目标链代币）
+      const token = getTokenInfo(tx.SrcToken) || getTokenInfo(tx.DstToken);
       const tokensHTML = token ? `<div class="tokens">${tokenPillHTML(token.symbol, token.chain)}</div>` : `<span class="badge badge-default">N/A</span>`;
-      const activity = `<span class="icon inflow"></span>Received ${formatMoney(Number(tx.NetAmount || 0)).replace('$','')} ${token ? token.symbol : ''} from ${short(tx.Payer)}`;
+      // 使用 USD 格式化后的值
+      const netAmountUSD = tx.NetAmountUSD || '0.00';
+      const activity = `<span class="icon inflow"></span>Received $${netAmountUSD} ${token ? token.symbol : ''} from ${short(tx.Payer)}`;
       const hue = hueFromString(String(tx.Payer || ''));
       const row = document.createElement('div');
       row.className = 'tx-row';
       row.innerHTML = `
         <div class="tx-cell" title="${tx.Payer}"><span class="avatar" style="--h:${hue}"></span><span class="mono">${short(tx.Payer)}</span></div>
         <div class="tx-cell" title="${tx.Timestamp}">${timeAgo(tx.Timestamp)}</div>
-        <div class="tx-cell">${formatMoney(Number(tx.NetAmount || 0))}</div>
+        <div class="tx-cell">$${netAmountUSD}</div>
         <div class="tx-cell">${statusBadgeHTML(tx.Status)}</div>
         <div class="tx-cell hide-md">${tokensHTML}</div>
         <div class="tx-cell hide-md">${activity}</div>
@@ -338,19 +387,26 @@
   if (el.themeSwitch) el.themeSwitch.addEventListener('change', toggleTheme);
 
   // Logout functionality
-  el.logoutBtn.addEventListener('click', () => {
+  function logout() {
     localStorage.removeItem('merchantAddress');
+    localStorage.removeItem('merchantToken');
     window.location.href = 'login.html';
-  });
+  }
+  
+  el.logoutBtn.addEventListener('click', logout);
 
   async function load() {
-    if (!currentMerchantAddress) return;
+    if (!merchantToken) {
+      setStatus('Please login');
+      return;
+    }
     
     const start = Date.now();
     setStatus('Loading...');
     
     try {
-      const data = await fetchWithTimeout(`/dashboard/api/merchant/${currentMerchantAddress}/payouts`, { timeout: 8000 });
+      // 使用认证的 merchant API
+      const data = await fetchWithTimeout('/merchant/payouts?limit=100', { timeout: 8000 });
       const list = normalizeTransactions(parseList(data));
 
       if (list.length === 0) {
@@ -424,20 +480,20 @@
 
   // Initialize
   function init() {
-    // Get merchant address from URL or localStorage
-    const urlParams = new URLSearchParams(window.location.search);
-    const addressFromUrl = urlParams.get('address');
-    const addressFromStorage = localStorage.getItem('merchantAddress');
+    // 从 localStorage 获取 token 和地址
+    merchantToken = localStorage.getItem('merchantToken');
+    currentMerchantAddress = localStorage.getItem('merchantAddress');
     
-    currentMerchantAddress = addressFromUrl || addressFromStorage;
-    
-    if (!currentMerchantAddress) {
+    if (!merchantToken || !currentMerchantAddress) {
+      // 未登录，跳转到登录页
       window.location.href = 'login.html';
       return;
     }
 
-    // Display merchant address
-    el.merchantAddressDisplay.textContent = currentMerchantAddress;
+    // 显示商家地址（支持 EVM 和 Solana 格式，使用简写）
+    el.merchantAddressDisplay.textContent = short(currentMerchantAddress);
+    el.merchantAddressDisplay.title = currentMerchantAddress; // 完整地址在 tooltip 中
+    el.merchantInfo.style.display = 'block';
     
     loadTheme();
     load();
