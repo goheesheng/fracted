@@ -73,8 +73,8 @@ const ERC20_ABI = [
 ]
 
 const MYOAPP_ABI = [
-  'function quotePayoutToken(uint32 _dstEid, bytes32 _dstToken, bytes32 _merchant, uint256 _amount, bytes _options, bool _payInLzToken) view returns (tuple(uint256 nativeFee, uint256 lzTokenFee))',
-  'function requestPayoutToken(uint32 _dstEid, address _srcToken, bytes32 _dstToken, bytes32 _merchant, uint256 _amount, bytes _options) payable',
+  'function quotePayoutToken(uint32 _dstEid, address _dstToken, address _merchant, uint256 _amount, bytes _options, bool _payInLzToken) view returns (tuple(uint256 nativeFee, uint256 lzTokenFee))',
+  'function requestPayoutToken(uint32 _dstEid, address _srcToken, address _dstToken, address _merchant, uint256 _amount, bytes _options) payable',
 ]
 
 // ====== Helpers ======
@@ -544,8 +544,10 @@ window.addEventListener('load', async () => {
       
       // Handle Ethereum networks
       await ensureNetwork(networkKey)
-      provider = new ethers.providers.Web3Provider(window.ethereum)
-      signer = provider.getSigner()
+      if (!provider) {
+        provider = new ethers.providers.Web3Provider(window.ethereum)
+        signer = provider.getSigner()
+      }
       const srcTokenAddr = resolveSrcTokenAddress()
       if (!srcTokenAddr) {
         alert('No source token address configured for the selected network/token. Please set TOKEN_ADDRESSES in app.js.')
@@ -588,10 +590,10 @@ window.addEventListener('load', async () => {
       
       // Handle Ethereum networks
       await ensureNetwork(networkKey)
-      // Always refresh provider and signer after network switch to avoid stale network state
-      provider = new ethers.providers.Web3Provider(window.ethereum)
-      signer = provider.getSigner()
-      log(`Provider refreshed for network: ${networkKey}`)
+      if (!provider) {
+        provider = new ethers.providers.Web3Provider(window.ethereum)
+        signer = provider.getSigner()
+      }
 
       const oapp = OAPP_ADDRESSES[networkKey]
       const merchant = $('merchant').value.trim()
@@ -638,12 +640,6 @@ window.addEventListener('load', async () => {
 
       const myOApp = new ethers.Contract(oapp, MYOAPP_ABI, signer)
 
-      // Convert address strings to bytes32 format (pad 20 bytes to 32 bytes)
-      const merchantBytes32 = ethers.utils.hexZeroPad(merchant, 32)
-      const dstTokenBytes32 = ethers.utils.hexZeroPad(dstTokenAddress, 32)
-      log(`Converted merchant to bytes32: ${merchantBytes32}`)
-      log(`Converted dstToken to bytes32: ${dstTokenBytes32}`)
-
       // Build options hex via backend (mirror hardhat task behavior)
       log('Building LayerZero options (executor receive gas)...')
       const gas = 150000
@@ -655,8 +651,8 @@ window.addEventListener('load', async () => {
       log('Quoting fee...')
       const fee = await myOApp.quotePayoutToken(
         dstEid,
-        dstTokenBytes32,
-        merchantBytes32,
+        dstTokenAddress,
+        merchant,
         amount,
         optionsHex,
         false
@@ -667,8 +663,8 @@ window.addEventListener('load', async () => {
       const tx = await myOApp.requestPayoutToken(
         dstEid,
         srcToken,
-        dstTokenBytes32,
-        merchantBytes32,
+        dstTokenAddress,
+        merchant,
         amount,
         optionsHex,
         { value: fee.nativeFee }
