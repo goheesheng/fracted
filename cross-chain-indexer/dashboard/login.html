@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Merchant Login - Monitoring Dashboard</title>
+  <link rel="stylesheet" href="styles.css" />
+  <style>
+    .login-container {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      padding: 20px;
+    }
+    
+    .login-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 32px;
+      width: 100%;
+      max-width: 420px;
+      box-shadow: var(--shadow-strong);
+      text-align: center;
+    }
+    
+    .login-header {
+      margin-bottom: 24px;
+    }
+    
+    .login-header h1 {
+      font-size: 24px;
+      font-weight: 800;
+      color: var(--text);
+      margin: 0 0 8px 0;
+      letter-spacing: 0.3px;
+    }
+    
+    .login-header p {
+      color: var(--muted);
+      font-size: 14px;
+      margin: 0;
+    }
+    
+    .form-group {
+      margin-bottom: 20px;
+      text-align: left;
+    }
+    
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+    
+    .form-input {
+      width: 100%;
+      padding: 12px 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--card);
+      color: var(--text);
+      font-size: 14px;
+      transition: all 0.15s ease;
+      outline: none;
+    }
+    
+    .form-input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.15);
+    }
+    
+    .form-input::placeholder {
+      color: var(--muted);
+    }
+    
+    .login-btn {
+      width: 100%;
+      padding: 12px 16px;
+      background: var(--accent);
+      color: white;
+      border: none;
+      border-radius: 10px;
+      font-size: 14px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      margin-bottom: 16px;
+    }
+    
+    .login-btn:hover {
+      background: #1d4ed8;
+      transform: translateY(-1px);
+    }
+    
+    .login-btn:disabled {
+      background: var(--muted);
+      cursor: not-allowed;
+      transform: none;
+    }
+    
+    .error-message {
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      color: #dc2626;
+      padding: 12px;
+      border-radius: 8px;
+      font-size: 13px;
+      margin-bottom: 16px;
+      display: none;
+    }
+    
+    .back-link {
+      color: var(--muted);
+      font-size: 13px;
+      text-decoration: none;
+      transition: color 0.15s ease;
+    }
+    
+    .back-link:hover {
+      color: var(--accent);
+    }
+    
+    .address-hint {
+      font-size: 11px;
+      color: var(--muted);
+      margin-top: 4px;
+    }
+    
+    /* Dark mode adjustments */
+    body.dark .form-input {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.18);
+    }
+    
+    body.dark .form-input:focus {
+      border-color: #60a5fa;
+      box-shadow: 0 0 0 3px rgba(96, 165, 250, 0.25);
+    }
+    
+    body.dark .error-message {
+      background: rgba(239, 68, 68, 0.15);
+      border-color: rgba(239, 68, 68, 0.35);
+      color: #fca5a5;
+    }
+  </style>
+</head>
+<body>
+  <div class="login-container">
+    <div class="login-card">
+      <div class="login-header">
+        <img src="logodark.png" alt="Company logo" class="logo light" style="height: 48px; margin-bottom: 16px;" />
+        <img src="logowhite.png" alt="Company logo" class="logo dark" style="height: 48px; margin-bottom: 16px;" />
+        <h1>Merchant Login</h1>
+        <p>Enter your merchant address to access your dashboard</p>
+      </div>
+      
+      <div class="error-message" id="error-message"></div>
+      
+      <form id="login-form">
+        <div class="form-group">
+          <label for="merchant-address">Merchant Address</label>
+          <input 
+            type="text" 
+            id="merchant-address" 
+            class="form-input" 
+            placeholder="0x... or Solana address" 
+            required 
+            autocomplete="off"
+          />
+          <div class="address-hint">Enter your wallet address (EVM: 0x... or Solana: Base58)</div>
+        </div>
+        
+        <button type="submit" class="login-btn" id="login-btn">
+          Access Dashboard
+        </button>
+      </form>
+      
+      <a href="index.html" class="back-link">← Back to Admin Dashboard</a>
+    </div>
+  </div>
+
+  <script>
+    (function() {
+      const form = document.getElementById('login-form');
+      const addressInput = document.getElementById('merchant-address');
+      const loginBtn = document.getElementById('login-btn');
+      const errorMessage = document.getElementById('error-message');
+      
+      // Theme handling
+      function loadTheme() {
+        const saved = localStorage.getItem('theme');
+        const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        const mode = saved || (prefersDark ? 'dark' : 'light');
+        if (mode === 'dark') {
+          document.body.classList.add('dark');
+        } else {
+          document.body.classList.remove('dark');
+        }
+      }
+      
+      function validateEVMAddress(address) {
+        return /^0x[a-fA-F0-9]{40}$/.test(address);
+      }
+      
+      function validateSolanaAddress(address) {
+        // Solana 地址是 32-44 字符的 Base58 编码
+        if (address.length < 32 || address.length > 44) {
+          return false;
+        }
+        // Base58 字符集（不包含 0、O、I、l）
+        return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address);
+      }
+      
+      function validateAddress(address) {
+        return validateEVMAddress(address) || validateSolanaAddress(address);
+      }
+      
+      function showError(message) {
+        errorMessage.textContent = message;
+        errorMessage.style.display = 'block';
+        setTimeout(() => {
+          errorMessage.style.display = 'none';
+        }, 5000);
+      }
+      
+      function setLoading(loading) {
+        loginBtn.disabled = loading;
+        loginBtn.textContent = loading ? 'Verifying...' : 'Access Dashboard';
+      }
+      
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        
+        const address = addressInput.value.trim();
+        
+        if (!address) {
+          showError('Please enter your merchant address');
+          return;
+        }
+        
+        if (!validateAddress(address)) {
+          showError('Please enter a valid wallet address (EVM: 0x... or Solana: Base58)');
+          return;
+        }
+        
+        setLoading(true);
+        
+        try {
+          // 对于 EVM 地址使用小写，Solana 地址保持原样
+          const normalizedAddr = validateEVMAddress(address) ? address.toLowerCase() : address;
+          
+          // 使用新的登录 API
+          const loginResponse = await fetch('/auth/login', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              address: normalizedAddr,
+              role: 'merchant'
+            })
+          });
+          
+          if (loginResponse.ok) {
+            const data = await loginResponse.json();
+            // 保存 token 和地址信息
+            localStorage.setItem('merchantToken', data.token);
+            localStorage.setItem('merchantAddress', normalizedAddr);
+            // 跳转到商家 Dashboard
+            window.location.href = 'merchant-dashboard.html';
+          } else if (loginResponse.status === 403) {
+            showError('Address not authorized for merchant access. Please check your address or contact support.');
+          } else if (loginResponse.status === 400) {
+            const errorText = await loginResponse.text();
+            showError(errorText || 'Invalid address format. Please check your input.');
+          } else {
+            showError('Unable to verify merchant address. Please try again.');
+          }
+        } catch (error) {
+          console.error('Login error:', error);
+          showError('Connection error. Please check your internet connection and try again.');
+        } finally {
+          setLoading(false);
+        }
+      });
+      
+      // Auto-format address input (only for EVM addresses)
+      addressInput.addEventListener('input', (e) => {
+        let value = e.target.value.trim();
+        // 只对看起来像 EVM 地址的输入自动添加 0x
+        if (value && !value.startsWith('0x') && /^[a-fA-F0-9]/.test(value) && value.length <= 42) {
+          value = '0x' + value;
+          e.target.value = value;
+        }
+      });
+      
+      loadTheme();
+    })();
+  </script>
+</body>
+</html>
+

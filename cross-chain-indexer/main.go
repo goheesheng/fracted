@@ -21,6 +21,15 @@ import (
 	"github.com/ethereum/go-ethereum/ethclient"
 )
 
+func getEnvOrDefault(key, defaultVal string) string {
+	if val := os.Getenv(key); val != "" {
+		return val
+	}
+	return defaultVal
+}
+
+var jwtSecret = []byte(getEnvOrDefault("JWT_SECRET", "dev-local-secret-change-me"))
+
 // --------------------------- CONFIG (请按需替换) ---------------------------
 const (
 	// 【必填】用于实时监听的 WSS RPC（你的 Base Sepolia WSS）
@@ -32,11 +41,27 @@ const (
 	// 可选：用于目标链交付状态检查（Arbitrum Sepolia）
 	arbSepoliaHTTPS = "https://arbitrum-sepolia.publicnode.com"
 
-	// 【必填】你实际部署的 Base Sepolia 合约地址（示例）
-	oappContractAddress = "0xe2f36c4f1BF9E7B7261c676E35b8d17C0845382A"
+	// Solana Devnet RPC
+	solanaDevnetRPC = "https://api.devnet.solana.com"
+
+	// 【必填】Base Sepolia 合约地址（MyOApp）
+	oappContractAddress = "0xA1D91CdcBD933c3385D7dea34D87357f5E62f6d6"
+
+	// Arbitrum Sepolia 合约地址（MyOApp）
+	arbContractAddress = "0x1a9C0a66Cb68D92c598B0D2f10de3C755Eb6D438"
+
+	// Solana Devnet 程序地址 (transfer_contract)
+	// Solana transfer_contract 程序地址
+	solanaProgramAddress = "GSPmsxkxd5qR5HG4fhUd5cBrVkWNJWi6pWUFQnYmTEc1"
 
 	// 大多数 USDT/USDC 使用 6 位小数
 	TokenDecimals = 6.0
+
+	// LayerZero Endpoint IDs
+	EID_BASE_SEPOLIA   = 40245
+	EID_ARB_SEPOLIA    = 40231
+	EID_SOLANA_DEVNET  = 40168
+	EID_SOLANA_MAINNET = 30168
 )
 
 // TokenPayoutRequested event topic (请确保该 topic 与合约一致)
@@ -147,7 +172,7 @@ func listenForNewEvents(ctx context.Context, client *ethclient.Client, oappAddre
 
 // --------------------------- Backfill (历史回溯) ---------------------------
 func backfillHistoricalEvents(client *ethclient.Client, oappAddress common.Address, eventTopic common.Hash, proc *Processor) uint64 {
-	log.Println("backfill: starting historical scan (200 blocks)")
+	log.Println("backfill: starting historical scan (50000 blocks)")
 	ctx := context.Background()
 	header, err := client.HeaderByNumber(ctx, nil)
 	if err != nil {
@@ -155,7 +180,7 @@ func backfillHistoricalEvents(client *ethclient.Client, oappAddress common.Addre
 		return 0
 	}
 	latestBlock := header.Number.Uint64()
-	const backfillBlocks = 200
+	const backfillBlocks = 50000
 	var fromBlock uint64
 	if latestBlock > backfillBlocks {
 		fromBlock = latestBlock - backfillBlocks
@@ -277,12 +302,43 @@ func main() {
 		mu.Unlock()
 	}
 
-	// 6) Start delivery worker (placeholder)
+	// 6) 初始化并启动 Solana 监听器
+	solanaListener, err := NewSolanaListener(solanaDevnetRPC, solanaProgramAddress, store)
+	if err != nil {
+		log.Printf("main: failed to create Solana listener: %v", err)
+	} else {
+		log.Println("main: Solana listener created")
+
+		// 回填 Solana 历史交易（最近 100 笔）
+		go func() {
+			if err := solanaListener.BackfillHistoricalTransactions(ctx, 100); err != nil {
+				log.Printf("main: Solana backfill error: %v", err)
+			}
+		}()
+
+		// 启动实时监听（带重连机制）
+		go func() {
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				default:
+				}
+
+				if err := solanaListener.ListenForNewTransactions(ctx); err != nil {
+					log.Printf("main: Solana listener error: %v, reconnecting in 5s...", err)
+					time.Sleep(5 * time.Second)
+				}
+			}
+		}()
+	}
+
+	// 7) Start delivery worker (placeholder)
 	go trackDeliveryStatus(store)
 	// 启动状态更新器：每 15 秒检查一次 Pending（你可以根据需要调整间隔）
 	go statusUpdater(store, httpsClient, 15*time.Second)
 
-	// 7) Start API server (api.go must provide NewServer)
+	// 8) Start API server (api.go must provide NewServer)
 	server := NewServer(store, httpsClient, oappAddr, tokenPayoutRequestedTopic, proc)
 	go func() {
 		addr := ":8080"
@@ -292,7 +348,7 @@ func main() {
 		}
 	}()
 
-	// 8) Dashboard refresh loop
+	// 9) Dashboard refresh loop
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 	for range ticker.C {

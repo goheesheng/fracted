@@ -1,0 +1,61 @@
+# 可执行文件
+*.exe
+*.exe~
+__debug_bin.exe*
+cross-chain-indexer-linux
+
+# 临时文件
+*.tmp
+*.log
+*.swp
+*.swo
+*~
+
+# 调试文件
+debug.html
+__debug_bin.exe*
+
+# 构建输出
+output/
+dist/
+build/
+
+# 数据库文件（根据需要选择是否忽略）
+# indexer.db
+
+# 环境变量文件
+.env
+.env.local
+.env.production
+
+# IDE文件
+.vscode/
+.idea/
+*.iml
+
+# 操作系统文件
+.DS_Store
+Thumbs.db
+
+# Go相关
+vendor/
+*.test
+*.prof
+
+# 日志文件
+*.log
+logs/
+
+# 临时目录
+tmp/
+temp/
+
+# SSH密钥文件
+id_rsa*
+*.pem
+*.key
+
+# 测试和调试脚本
+test_*.go
+debug_*.go
+check_*.go

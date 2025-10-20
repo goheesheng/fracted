@@ -2,13 +2,14 @@ package main
 
 import (
 	"context"
+	"encoding/json" // 新增
+	"fmt"           // 新增
 	"log"
 	"math/big"
 	"time"
 
 	"cross-chain-indexer/contract"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
@@ -36,42 +37,44 @@ func (p *Processor) ParseAndPersist(ctx context.Context, vLog types.Log) error {
 	// 防御：必须有 topic
 	if len(vLog.Topics) == 0 {
 		log.Printf("processor: log has no topics, tx=%s idx=%d", vLog.TxHash.Hex(), vLog.Index)
+		return nil // 忽略无 topic 的 log
 	}
 
-	topic := ""
-	if len(vLog.Topics) > 0 {
-		topic = vLog.Topics[0].Hex()
-	}
-
-	// 1) 插入事件去重（events 表）
-	inserted, err := p.store.InsertEventIfNotExists(vLog.TxHash.Hex(), uint(vLog.Index), vLog.BlockNumber, topic, vLog.Data)
+	// 1) 序列化 Log 为 JSON 字符串，作为原始数据存储
+	rawLogBytes, err := json.Marshal(vLog)
 	if err != nil {
-		log.Printf("processor: InsertEventIfNotExists error: %v", err)
-		return err
+		return fmt.Errorf("failed to marshal log to json: %w", err)
 	}
+	rawLog := string(rawLogBytes)
+
+	// 2) 将原始 log 写入 events 表（若已存在则跳过）
+	inserted, err := p.store.InsertEventIfNotExists(
+		vLog.TxHash.Hex(),
+		vLog.Index,
+		vLog.BlockNumber,
+		rawLog,
+	)
+	if err != nil {
+		return fmt.Errorf("insert event failed: %w", err)
+	}
+
+	// 如果 log 已经存在（被跳过），则无需重复解析和处理
 	if !inserted {
-		// 已存在，说明已经处理或正在处理中，跳过
 		return nil
 	}
 
-	// 2) 通过合约 binding 解析事件
-	oapp, err := contract.NewMyOApp(common.HexToAddress(oappContractAddress), p.client)
+	// 3) 解析事件
+	event, err := p.parseEvent(vLog)
 	if err != nil {
-		log.Printf("processor: NewMyOApp error: %v", err)
-		// 返回错误，让调用方决定是否重试
-		return err
+		// 解析失败，但原始事件已存。继续处理下一个 log。
+		log.Printf("processor: failed to parse log (tx=%s, idx=%d): %v", vLog.TxHash.Hex(), vLog.Index, err)
+		return nil
 	}
 
-	event, err := oapp.ParseTokenPayoutRequested(vLog)
-	if err != nil {
-		log.Printf("processor: ParseTokenPayoutRequested failed for tx %s idx %d: %v", vLog.TxHash.Hex(), vLog.Index, err)
-		return err
-	}
-
-	// 3) 尝试获取区块时间作为 timestamp（若失败则使用 now）
-	var ts time.Time
+	// 4) 获取区块时间戳
 	header, err := p.client.HeaderByNumber(ctx, new(big.Int).SetUint64(vLog.BlockNumber))
-	if err != nil {
+	var ts time.Time
+	if err != nil || header == nil {
 		// 取不到区块头时使用当前时间（并记录日志）
 		log.Printf("processor: warning couldn't get header for block %d: %v", vLog.BlockNumber, err)
 		ts = time.Now().UTC()
@@ -79,7 +82,7 @@ func (p *Processor) ParseAndPersist(ctx context.Context, vLog types.Log) error {
 		ts = time.Unix(int64(header.Time), 0).UTC()
 	}
 
-	// 4) 构造 PayoutRecord
+	// 5) 构造 PayoutRecord
 	rec := PayoutRecord{
 		TxHash:      vLog.TxHash.Hex(),
 		BlockNumber: int64(vLog.BlockNumber),
@@ -103,19 +106,36 @@ func (p *Processor) ParseAndPersist(ctx context.Context, vLog types.Log) error {
 		rec.GrossAmount = big.NewInt(0)
 	}
 
-	// 5) Upsert payout 到 DB
+	// 6) Upsert payout 到 DB
 	if err := p.store.UpsertPayout(rec); err != nil {
-		log.Printf("processor: UpsertPayout error for tx %s: %v", rec.TxHash, err)
-		return err
+		log.Printf("processor: failed to upsert payout for tx %s: %v", rec.TxHash, err)
+		return fmt.Errorf("upsert payout failed: %w", err)
 	}
 
-	// 6) 标记 event parsed
-	if err := p.store.MarkEventParsed(vLog.TxHash.Hex(), uint(vLog.Index)); err != nil {
-		log.Printf("processor: MarkEventParsed error for tx %s idx %d: %v", vLog.TxHash.Hex(), vLog.Index, err)
-		// 已经写到 payouts，但 mark parsed 失败。返回错误以便调用者重试或记录。
-		return err
+	// 7) 标记 events 表中的 log 为已解析
+	if err := p.store.MarkEventAsParsed(vLog.TxHash.Hex(), vLog.Index); err != nil {
+		log.Printf("processor: failed to mark event as parsed for tx %s: %v", vLog.TxHash.Hex(), err)
 	}
 
-	log.Printf("processor: persisted payout tx=%s block=%d dstEid=%d net=%s", rec.TxHash, rec.BlockNumber, rec.DstEid, rec.NetAmount.String())
 	return nil
+}
+
+// parseEvent 解析具体的 TokenPayoutRequested 事件
+func (p *Processor) parseEvent(vLog types.Log) (*contract.MyOAppTokenPayoutRequested, error) {
+	// ContractAddress hardcode，但在 main.go 中统一配置可能更好
+	oappAddr := vLog.Address
+
+	// 实例化合约绑定
+	oapp, err := contract.NewMyOApp(oappAddr, p.client)
+	if err != nil {
+		return nil, fmt.Errorf("failed to instantiate contract: %w", err)
+	}
+
+	// 解析事件
+	event, err := oapp.ParseTokenPayoutRequested(vLog)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse TokenPayoutRequested event: %w", err)
+	}
+
+	return event, nil
 }
