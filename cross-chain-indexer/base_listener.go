@@ -69,17 +69,26 @@ func NewBaseListener(wssURL, httpsURL, contractAddr string, store *Store) (*Base
 func (bl *BaseListener) Start(ctx context.Context) error {
 	log.Printf("BaseListener: Starting for contract %s", bl.contractAddr.Hex())
 
-	// 1. 回填历史事件
-	latestBlock := bl.backfillHistoricalEvents(ctx)
-	log.Printf("BaseListener: Backfill completed, latest block: %d", latestBlock)
+	// 1. 异步回填历史事件（不阻塞启动流程）
+	go func() {
+		latestBlock := bl.backfillHistoricalEvents(ctx)
+		log.Printf("BaseListener: Backfill completed, latest block: %d", latestBlock)
+	}()
 
 	// 2. 启动实时监听
 	if bl.wssClient != nil {
 		go bl.listenForNewEvents(ctx)
 	} else {
 		log.Println("BaseListener: WSS client not available, will only use polling")
-		// 启动轮询模式
-		go bl.pollForNewEvents(ctx, latestBlock)
+		// 启动轮询模式（从当前区块开始）
+		go func() {
+			header, err := bl.httpsClient.HeaderByNumber(ctx, nil)
+			var latestBlock uint64
+			if err == nil && header != nil && header.Number != nil {
+				latestBlock = header.Number.Uint64()
+			}
+			bl.pollForNewEvents(ctx, latestBlock)
+		}()
 	}
 
 	return nil

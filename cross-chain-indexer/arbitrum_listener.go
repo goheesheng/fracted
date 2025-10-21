@@ -69,17 +69,26 @@ func NewArbitrumListener(wssURL, httpsURL, contractAddr string, store *Store) (*
 func (al *ArbitrumListener) Start(ctx context.Context) error {
 	log.Printf("ArbitrumListener: Starting for contract %s", al.contractAddr.Hex())
 
-	// 1. 回填历史事件
-	latestBlock := al.backfillHistoricalEvents(ctx)
-	log.Printf("ArbitrumListener: Backfill completed, latest block: %d", latestBlock)
+	// 1. 异步回填历史事件（不阻塞启动流程）
+	go func() {
+		latestBlock := al.backfillHistoricalEvents(ctx)
+		log.Printf("ArbitrumListener: Backfill completed, latest block: %d", latestBlock)
+	}()
 
 	// 2. 启动实时监听
 	if al.wssClient != nil {
 		go al.listenForNewEvents(ctx)
 	} else {
 		log.Println("ArbitrumListener: WSS client not available, will only use polling")
-		// 启动轮询模式
-		go al.pollForNewEvents(ctx, latestBlock)
+		// 启动轮询模式（从当前区块开始）
+		go func() {
+			header, err := al.httpsClient.HeaderByNumber(ctx, nil)
+			var latestBlock uint64
+			if err == nil && header != nil && header.Number != nil {
+				latestBlock = header.Number.Uint64()
+			}
+			al.pollForNewEvents(ctx, latestBlock)
+		}()
 	}
 
 	return nil
@@ -284,26 +293,26 @@ func (al *ArbitrumListener) parseAndPersist(ctx context.Context, vLog types.Log)
 
 	dstEid := uint32(vLog.Topics[1].Big().Uint64())
 	payer := common.BytesToAddress(vLog.Topics[2].Bytes())
-	
+
 	// merchant 地址处理：根据目标链类型决定如何解析
 	var merchant common.Address
 	var solanaMerchant string
-	
+
 	// 检查目标链是否为 Solana (EID 40168 = Solana Devnet, 30168 = Solana Mainnet)
 	isSolanaDestination := (dstEid == 40168 || dstEid == 30168)
-	
+
 	if isSolanaDestination {
 		// Solana 地址：Topics[3] 是完整的 32 字节 Solana 公钥
 		merchantBytes32 := vLog.Topics[3]
-		
+
 		// 转换为 Solana Base58 地址
 		solPubkey := solana.PublicKeyFromBytes(merchantBytes32.Bytes())
 		solanaMerchant = solPubkey.String()
-		
+
 		// 为了数据库兼容性，也存储一个映射的 EVM 地址（使用后20字节）
 		merchant = common.BytesToAddress(merchantBytes32.Bytes())
-		
-		log.Printf("ArbitrumListener: Solana merchant address: %s (mapped to %s)", 
+
+		log.Printf("ArbitrumListener: Solana merchant address: %s (mapped to %s)",
 			solanaMerchant, merchant.Hex())
 	} else {
 		// EVM 地址：Topics[3] 是标准的 EVM 地址（取后20字节）
