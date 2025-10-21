@@ -89,6 +89,20 @@ app.get('/options', (req, res) => {
   }
 })
 
+// Helper function to validate address based on chain
+function isValidAddress(address, dstEid) {
+  const eid = Number(dstEid)
+  
+  // Solana Devnet (EID 40168)
+  if (eid === 40168) {
+    // Solana address: base58 encoded, typically 32-44 characters
+    return /^[1-9A-HJ-NP-Za-km-z]{32,44}$/.test(address)
+  }
+  
+  // EVM chains (Ethereum, Base, Arbitrum, etc.)
+  return /^0x[a-fA-F0-9]{40}$/.test(address)
+}
+
 // Generate payment link with payment ID
 // Usage: GET /generate-link?merchant=0x...&dstEid=40245&dstToken=0x...&amount=1000000
 app.get('/generate-link', async (req, res) => {
@@ -102,13 +116,6 @@ app.get('/generate-link', async (req, res) => {
       })
     }
     
-    // Validate merchant address format
-    if (!/^0x[a-fA-F0-9]{40}$/.test(merchant)) {
-      return res.status(400).json({ 
-        error: 'Invalid merchant address format' 
-      })
-    }
-    
     // Validate dstEid is a number
     const dstEidNum = Number(dstEid)
     if (isNaN(dstEidNum) || dstEidNum <= 0) {
@@ -117,10 +124,19 @@ app.get('/generate-link', async (req, res) => {
       })
     }
     
-    // Validate dstToken address format
-    if (!/^0x[a-fA-F0-9]{40}$/.test(dstToken)) {
+    // Validate merchant address format (chain-specific)
+    if (!isValidAddress(merchant, dstEidNum)) {
+      const chainType = dstEidNum === 40168 ? 'Solana (base58)' : 'EVM (0x...)'
       return res.status(400).json({ 
-        error: 'Invalid dstToken address format' 
+        error: `Invalid merchant address format for ${chainType}` 
+      })
+    }
+    
+    // Validate dstToken address format (chain-specific)
+    if (!isValidAddress(dstToken, dstEidNum)) {
+      const chainType = dstEidNum === 40168 ? 'Solana (base58)' : 'EVM (0x...)'
+      return res.status(400).json({ 
+        error: `Invalid dstToken address format for ${chainType}` 
       })
     }
     
