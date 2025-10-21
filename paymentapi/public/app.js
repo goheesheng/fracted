@@ -73,8 +73,8 @@ const ERC20_ABI = [
 ]
 
 const MYOAPP_ABI = [
-  'function quotePayoutToken(uint32 _dstEid, address _dstToken, address _merchant, uint256 _amount, bytes _options, bool _payInLzToken) view returns (tuple(uint256 nativeFee, uint256 lzTokenFee))',
-  'function requestPayoutToken(uint32 _dstEid, address _srcToken, address _dstToken, address _merchant, uint256 _amount, bytes _options) payable',
+  'function quotePayoutToken(uint32 _dstEid, bytes32 _dstToken, bytes32 _merchant, uint256 _amount, bytes _options, bool _payInLzToken) view returns (tuple(uint256 nativeFee, uint256 lzTokenFee))',
+  'function requestPayoutToken(uint32 _dstEid, address _srcToken, bytes32 _dstToken, bytes32 _merchant, uint256 _amount, bytes _options) payable',
 ]
 
 // ====== Helpers ======
@@ -83,6 +83,22 @@ function log(msg) {
   const el = $('log')
   el.textContent += `\n${msg}`
   el.scrollTop = el.scrollHeight
+}
+
+// Convert address (EVM or Solana) to bytes32 format
+function addressToBytes32ForEid(address, dstEid) {
+  if (!address) {
+    throw new Error('Address is required')
+  }
+  // Solana: EID 40168 → base58 decode into 32 bytes
+  if (Number(dstEid) === 40168) {
+    const publicKey = new solanaWeb3.PublicKey(address)
+    const bytes = publicKey.toBytes()
+    if (bytes.length !== 32) throw new Error('Solana pubkey must be 32 bytes')
+    return '0x' + Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+  }
+  // EVM: left-pad to 32 bytes
+  return ethers.utils.hexZeroPad(address, 32)
 }
 
 function getQueryParam(name, defaultValue = '') {
@@ -648,11 +664,15 @@ window.addEventListener('load', async () => {
       const { optionsHex } = await optionsResp.json()
       log(`Options: ${optionsHex} (gas=${gas})`)
 
+      // Convert addresses to bytes32 format
+      const merchantBytes32 = addressToBytes32ForEid(merchant, dstEid)
+      const dstTokenBytes32 = addressToBytes32ForEid(dstTokenAddress, dstEid)
+      
       log('Quoting fee...')
       const fee = await myOApp.quotePayoutToken(
         dstEid,
-        dstTokenAddress,
-        merchant,
+        dstTokenBytes32,
+        merchantBytes32,
         amount,
         optionsHex,
         false
@@ -663,8 +683,8 @@ window.addEventListener('load', async () => {
       const tx = await myOApp.requestPayoutToken(
         dstEid,
         srcToken,
-        dstTokenAddress,
-        merchant,
+        dstTokenBytes32,
+        merchantBytes32,
         amount,
         optionsHex,
         { value: fee.nativeFee }

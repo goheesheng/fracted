@@ -36,7 +36,7 @@ app.use(express.static(path.join(__dirname, 'public'), {
 // - TOKEN_base_sepolia_USDT, TOKEN_base_sepolia_USDC, TOKEN_base_sepolia_XUSD
 // - TOKEN_arbitrum_sepolia_USDT, TOKEN_arbitrum_sepolia_USDC, TOKEN_arbitrum_sepolia_XUSD
 function envConfig() {
-  const networks = ['base-sepolia', 'arbitrum-sepolia']
+  const networks = ['base-sepolia', 'arbitrum-sepolia', 'solana-devnet']
   const symbols = ['USDT', 'USDC', 'XUSD']
   const contracts = {}
   const tokens = {}
