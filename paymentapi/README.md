@@ -33,25 +33,35 @@ npm start
 
 ### 1. 生成支付链接
 
-**请求:**
+**EVM 网络示例:**
 ```
 GET /generate-link?merchant=0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6&dstEid=40245&dstToken=0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d&amount=123000000
+```
+
+**Solana 网络示例:**
+```
+GET /generate-link?merchant=7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU&dstEid=40168&dstToken=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v&amount=1000000
 ```
 
 **响应:**
 ```json
 {
   "success": true,
-  "paymentId": "1234567890123456789",
-  "paymentLink": "https://demo.fracted.xyz/payment/1234567890123456789",
+  "paymentId": "1734567890123456789",
+  "paymentLink": "https://demo.fracted.xyz/payment/1734567890123456789",
   "parameters": {
     "merchant": "0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6",
     "dstEid": 40245,
     "dstToken": "0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d",
     "amount": 123000000
-  }
+  },
+  "message": "Payment link generated successfully"
 }
 ```
+
+**地址格式说明:**
+- **EVM 网络** (Base, Arbitrum): 使用 `0x` 前缀的以太坊地址格式（40 个十六进制字符）
+- **Solana 网络**: 使用 base58 编码的地址格式（32-44 个字符）
 
 ### 2. 获取支付信息
 
@@ -130,10 +140,10 @@ GET /api/payments
 | 字段 | 类型 | 说明 |
 |------|------|------|
 | id | TEXT | 主键，Snowflake ID |
-| merchant_address | TEXT | 商户地址 |
-| dst_eid | INTEGER | 目标链 ID |
-| dst_token | TEXT | 目标代币地址 |
-| amount | TEXT | 支付金额 |
+| merchant_address | TEXT | 商户地址（支持 EVM 和 Solana 格式） |
+| dst_eid | INTEGER | 目标链 ID (40245=Base, 40231=Arbitrum, 40168=Solana) |
+| dst_token | TEXT | 目标代币地址（支持 EVM 和 Solana 格式） |
+| amount | TEXT | 支付金额（最小单位） |
 | status | TEXT | 支付状态 |
 | created_at | DATETIME | 创建时间 |
 | updated_at | DATETIME | 更新时间 |
@@ -148,14 +158,23 @@ GET /api/payments
 
 ## 支持的网络
 
-### Ethereum 网络
-- Arbitrum Sepolia
-- Base Sepolia
-- Solana Devnet
+### EVM 网络
+- **Arbitrum Sepolia** (EID: 40231)
+  - RPC: https://sepolia-rollup.arbitrum.io/rpc
+  - 浏览器: https://sepolia.arbiscan.io/
+- **Base Sepolia** (EID: 40245)
+  - RPC: https://sepolia.base.org
+  - 浏览器: https://sepolia.basescan.org/
+
+### Solana 网络
+- **Solana Devnet** (EID: 40168)
+  - RPC: https://api.devnet.solana.com
+  - 浏览器: https://explorer.solana.com/?cluster=devnet
+  - **注意:** Solana 地址格式为 base58 编码（例如：`7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU`）
 
 ### 支持的钱包
-- MetaMask (Ethereum 网络)
-- Phantom (Solana 网络)
+- **MetaMask** (用于 EVM 网络)
+- **Phantom** (用于 Solana 网络)
 
 ## 故障排除
 
@@ -210,10 +229,26 @@ node test-payment-id.js
 创建 `.env` 文件：
 ```
 PORT=8080
-OAPP_arbitrum_sepolia=your_contract_address
-OAPP_base_sepolia=your_contract_address
-TOKEN_arbitrum_sepolia_USDC=your_token_address
-TOKEN_base_sepolia_USDT=your_token_address
+
+# EVM 网络配置
+OAPP_arbitrum_sepolia=0x...
+OAPP_base_sepolia=0x...
+TOKEN_arbitrum_sepolia_USDC=0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d
+TOKEN_base_sepolia_USDT=0x036CbD53842c5426634e7929541eC2318f3dCF7e
+
+# Solana 网络配置
+OAPP_solana_devnet=YourSolanaProgramAddress
+TOKEN_solana_devnet_USDC=EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v
+TOKEN_solana_devnet_USDT=Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB
+
+# EID 映射
+EID_TO_CHAIN_40245=Base Sepolia
+EID_TO_CHAIN_40231=Arbitrum Sepolia
+EID_TO_CHAIN_40168=Solana Devnet
+
+# 代币符号映射
+TOKEN_SYMBOL_0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d=USDC
+TOKEN_SYMBOL_EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v=USDC
 ```
 
 ### 生产环境
@@ -221,7 +256,52 @@ TOKEN_base_sepolia_USDT=your_token_address
 npm start
 ```
 
+## 快速生成支付链接
+
+使用 `quick-link.js` 脚本快速生成支付链接：
+
+```bash
+node quick-link.js
+```
+
+修改配置：
+```javascript
+// EVM 示例
+const MERCHANT_ADDRESS = '0xB7aa464b19037CF3dB7F723504dFafE7b63aAb84'
+const DESTINATION_EID = 40231
+const DESTINATION_TOKEN = '0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d'
+const AMOUNT = 1000000
+
+// Solana 示例
+const MERCHANT_ADDRESS = '7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU'
+const DESTINATION_EID = 40168
+const DESTINATION_TOKEN = 'EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v'
+const AMOUNT = 1000000
+```
+
+## 常用代币地址
+
+### Base Sepolia
+- USDT: `0x036CbD53842c5426634e7929541eC2318f3dCF7e`
+- USDC: `0x036CbD53842c5426634e7929541eC2318f3dCF7e`
+
+### Arbitrum Sepolia
+- USDT: `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`
+- USDC: `0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d`
+
+### Solana Devnet
+- USDT: `Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB`
+- USDC: `EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v`
+
 ## 更新日志
+
+### v1.2.0 (2024-10-21)
+- ✨ 新增 Solana Devnet 支持
+- ✨ 支持 Solana base58 地址格式验证
+- ✨ 更新支付链接生成器界面
+- ✨ 动态地址格式提示
+- ✨ 增加 Solana 代币地址示例
+- 📝 更新文档和示例
 
 ### v1.1.0
 - 修复 Payment ID 负数问题

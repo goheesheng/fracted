@@ -214,6 +214,7 @@
             <select id="dstEid">
               <option value="40245">Base Sepolia (40245)</option>
               <option value="40231">Arbitrum Sepolia (40231)</option>
+              <option value="40168">Solana Devnet (40168)</option>
             </select>
           </label>
           <label>Destination Token Address
@@ -258,11 +259,18 @@
       <section class="card">
         <h2>Example Configuration</h2>
         <div class="token-list">
-          <h3>Sample Payment Parameters:</h3>
+          <h3>Sample Payment Parameters (EVM Chains):</h3>
           <ul>
             <li><strong>Merchant Address:</strong> <code>0x742d35Cc6634C0532925a3b8D4C9db96C4b4d8b6</code></li>
             <li><strong>Destination Chain:</strong> Arbitrum Sepolia (40231)</li>
             <li><strong>Destination Token:</strong> <code>0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d</code></li>
+            <li><strong>Amount:</strong> 1.00 (USD - will be converted to 1000000 smallest units)</li>
+          </ul>
+          <h3>Sample Payment Parameters (Solana):</h3>
+          <ul>
+            <li><strong>Merchant Address:</strong> <code>7xKXtg2CW87d97TXJSDpbD5jBkheTqA83TZRuJosgAsU</code> (example)</li>
+            <li><strong>Destination Chain:</strong> Solana Devnet (40168)</li>
+            <li><strong>Destination Token:</strong> <code>EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</code> (USDC)</li>
             <li><strong>Amount:</strong> 1.00 (USD - will be converted to 1000000 smallest units)</li>
           </ul>
         </div>
@@ -280,6 +288,11 @@
           <ul>
             <li>USDC: <code>0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d</code></li>
             <li>USDT: <code>0x75faf114eafb1BDbe2F0316DF893fd58CE46AA4d</code></li>
+          </ul>
+          <h3>Solana Devnet:</h3>
+          <ul>
+            <li>USDT: <code>Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB</code></li>
+            <li>USDC: <code>EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v</code></li>
           </ul>
         </div>
       </section>
@@ -354,6 +367,22 @@
       document.getElementById('merchant').value = ''
       document.getElementById('dstToken').value = ''
       document.getElementById('amount').value = ''
+
+      // Update placeholders based on selected chain
+      document.getElementById('dstEid').addEventListener('change', function() {
+        const merchantInput = document.getElementById('merchant')
+        const tokenInput = document.getElementById('dstToken')
+        
+        if (this.value === '40168') {
+          // Solana Devnet selected
+          merchantInput.placeholder = 'Base58 address (e.g., 7xK...abc)'
+          tokenInput.placeholder = 'Solana token address (e.g., EPjF...1v)'
+        } else {
+          // EVM chains selected
+          merchantInput.placeholder = '0x...'
+          tokenInput.placeholder = '0x...'
+        }
+      })
 
       // Fracted logo click handler
       const fractedLogo = document.getElementById('fractedLogo')
