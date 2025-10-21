@@ -162,6 +162,7 @@
     '0x0f3a3d8e7c8b1e3b5f0b3d3c1a9f4f0a9e3b1c2d': { symbol: 'USDC', chain: 'Arb Sepolia' },
     '0xdac17f958d2ee523a2206206994597c13d831ec7': { symbol: 'USDT', chain: 'Arb Sepolia' },
     '0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d': { symbol: 'USDC', chain: 'Arb Sepolia' },
+    '0x4dad09303a773353908f17254b276ee2bd51f0ef': { symbol: 'USDT', chain: 'Arb Sepolia' },
     // Solana Devnet
     'solana:devnet:usdc': { symbol: 'USDC', chain: 'Solana Devnet' },
     'solana:devnet:usdt': { symbol: 'USDT', chain: 'Solana Devnet' },
@@ -170,16 +171,48 @@
     'solana:mainnet:usdt': { symbol: 'USDT', chain: 'Solana Mainnet' },
   };
 
-  function getTokenInfo(addr) {
+  function getTokenInfo(addr, dstChain, srcToken) {
+    console.log('[DEBUG] getTokenInfo called with:', { addr, dstChain, srcToken });
     if (!addr) return null;
     const k = String(addr).toLowerCase();
-    return TOKEN_MAP[k] || null;
+    const info = TOKEN_MAP[k];
+    if (info) return info;
+    
+    // 如果 addr 是零地址且目标链是 Solana，从 srcToken 推断
+    if (k === '0x0000000000000000000000000000000000000000' && dstChain) {
+      if (dstChain.includes('Solana')) {
+        // 尝试从源代币推断目标代币符号（通常相同）
+        if (srcToken) {
+          const srcInfo = TOKEN_MAP[String(srcToken).toLowerCase()];
+          if (srcInfo) {
+            console.log('[DEBUG] Found srcToken match:', srcToken, '->', srcInfo);
+            return { symbol: srcInfo.symbol, chain: dstChain };
+          }
+        }
+        // 默认返回 USDC
+        console.log('[DEBUG] Using default USDC for Solana chain');
+        return { symbol: 'USDC', chain: dstChain };
+      }
+    }
+    
+    // 如果 addr 是零地址，尝试从 srcToken 推断
+    if (k === '0x0000000000000000000000000000000000000000' && srcToken) {
+      const srcInfo = TOKEN_MAP[String(srcToken).toLowerCase()];
+      if (srcInfo) {
+        console.log('[DEBUG] Found srcToken match for zero address:', srcToken, '->', srcInfo);
+        return { symbol: srcInfo.symbol, chain: dstChain || 'Unknown' };
+      }
+    }
+    
+    console.log('[DEBUG] No token info found for:', { addr, dstChain, srcToken, k });
+    return null;
   }
 
   function timeAgo(iso) {
     const t = Date.parse(iso);
     if (isNaN(t)) return '-';
-    const s = Math.floor((Date.now() - t) / 1000);
+    const s = Math.abs(Math.floor((Date.now() - t) / 1000)); // 取绝对值，未来时间也显示为ago
+    
     if (s < 60) return `${s}s ago`;
     const m = Math.floor(s / 60);
     if (m < 60) return `${m}m ago`;
@@ -210,7 +243,38 @@
     
     for (const tx of recent) {
       // 优先检查 SrcToken（源链代币），再检查 DstToken（目标链代币）
-      const token = getTokenInfo(tx.SrcToken) || getTokenInfo(tx.DstToken);
+      const token = getTokenInfo(tx.SrcToken, tx.DstChain) || getTokenInfo(tx.DstToken, tx.DstChain, tx.SrcToken);
+      
+      // 特殊调试：检查特定的交易 Hash
+      if (tx.TxHash === '0xb601d8601253ca455186b10f259398e5c6df96aa5c5684f65533419f210355fb') {
+        console.log('[SPECIAL DEBUG] 检查问题交易:', {
+          txHash: tx.TxHash,
+          srcToken: tx.SrcToken,
+          dstToken: tx.DstToken,
+          dstChain: tx.DstChain,
+          srcTokenLower: tx.SrcToken ? String(tx.SrcToken).toLowerCase() : 'null',
+          dstTokenLower: tx.DstToken ? String(tx.DstToken).toLowerCase() : 'null',
+          srcTokenInMap: tx.SrcToken ? TOKEN_MAP[String(tx.SrcToken).toLowerCase()] : 'null',
+          dstTokenInMap: tx.DstToken ? TOKEN_MAP[String(tx.DstToken).toLowerCase()] : 'null',
+          isZeroAddress: tx.DstToken === '0x0000000000000000000000000000000000000000',
+          isSolanaChain: tx.DstChain && tx.DstChain.includes('Solana')
+        });
+      }
+      
+      // 调试：如果 token 为 null，打印详细信息
+      if (!token) {
+        console.log('[DEBUG] No token found for tx:', {
+          txHash: tx.TxHash,
+          srcToken: tx.SrcToken,
+          dstToken: tx.DstToken,
+          dstChain: tx.DstChain,
+          srcTokenLower: tx.SrcToken ? String(tx.SrcToken).toLowerCase() : 'null',
+          dstTokenLower: tx.DstToken ? String(tx.DstToken).toLowerCase() : 'null',
+          srcTokenInMap: tx.SrcToken ? TOKEN_MAP[String(tx.SrcToken).toLowerCase()] : 'null',
+          dstTokenInMap: tx.DstToken ? TOKEN_MAP[String(tx.DstToken).toLowerCase()] : 'null'
+        });
+      }
+      
       const tokenHTML = token ? tokenPillHTML(token.symbol, token.chain) : '<span class="badge badge-default">N/A</span>';
       const hue = hueFromString(String(tx.Payer || ''));
       
@@ -236,7 +300,7 @@
     
     for (const tx of list) {
       // 优先检查 SrcToken（源链代币），再检查 DstToken（目标链代币）
-      const token = getTokenInfo(tx.SrcToken) || getTokenInfo(tx.DstToken);
+      const token = getTokenInfo(tx.SrcToken, tx.DstChain) || getTokenInfo(tx.DstToken, tx.DstChain, tx.SrcToken);
       if (token) {
         const key = `${token.symbol}-${token.chain}`;
         const current = tokenMap.get(key) || { symbol: token.symbol, chain: token.chain, amount: 0, count: 0 };
@@ -293,7 +357,7 @@
 
     for (const tx of list) {
       // 优先检查 SrcToken（源链代币），再检查 DstToken（目标链代币）
-      const token = getTokenInfo(tx.SrcToken) || getTokenInfo(tx.DstToken);
+      const token = getTokenInfo(tx.SrcToken, tx.DstChain) || getTokenInfo(tx.DstToken, tx.DstChain, tx.SrcToken);
       const tokensHTML = token ? `<div class="tokens">${tokenPillHTML(token.symbol, token.chain)}</div>` : `<span class="badge badge-default">N/A</span>`;
       // 使用 USD 格式化后的值
       const netAmountUSD = tx.NetAmountUSD || '0.00';

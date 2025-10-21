@@ -103,6 +103,7 @@ func LoadMerchantConfig() *MerchantConfig {
 		config.MerchantAddresses["6h7aykpuhnmuca92gc82oarxc48igkli14mczh9xnlpp"] = true // 最常见的商家
 		config.MerchantAddresses["a9qyh2sten3xffk95wzr2hslFMC2781oPwKexPySNJrt"] = true // vault_authority
 		config.MerchantAddresses["awun8gk6x3xkr73ybrw2h8wxc6qgbjrvehs5dgejx3zs"] = true // 另一个商家
+		config.MerchantAddresses["7xkxtg2cw87d97txjsdpbd5jbkhetqa83tzrujosgasu"] = true // 测试商家（Arb->Solana跨链）
 	}
 
 	return config

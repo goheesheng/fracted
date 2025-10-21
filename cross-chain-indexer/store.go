@@ -230,13 +230,29 @@ func (s *Store) ListPayouts(limit, offset int) ([]PayoutRecord, error) {
 // ListMerchantPayouts 列出特定商家的 Payouts
 // 【新增函数】用于服务 /merchant/payouts 接口
 func (s *Store) ListMerchantPayouts(merchant common.Address, limit, offset int) ([]PayoutRecord, error) {
+	// 支持同时匹配 EVM 地址和 Solana 地址
+	merchantHex := strings.ToLower(merchant.Hex())
 	return s.listPayoutsByQuery(`
 		SELECT tx_hash, block_number, timestamp, dst_eid, payer, merchant, src_token, dst_token, gross_amount, net_amount, status, COALESCE(solana_merchant, ''), COALESCE(solana_payer, '')
 		FROM payouts
-		WHERE LOWER(merchant) = LOWER(?)
+		WHERE LOWER(merchant) = LOWER(?) OR LOWER(solana_merchant) = LOWER(?)
 		ORDER BY block_number DESC
 		LIMIT ? OFFSET ?
-	`, merchant.Hex(), limit, offset)
+	`, merchantHex, merchantHex, limit, offset)
+}
+
+// ListMerchantPayoutsByString 通过字符串地址查询商家的 Payouts
+// 【新增函数】支持 Solana 地址查询
+func (s *Store) ListMerchantPayoutsByString(merchantAddr string, limit, offset int) ([]PayoutRecord, error) {
+	// 支持同时匹配 EVM 地址和 Solana 地址
+	merchantLower := strings.ToLower(merchantAddr)
+	return s.listPayoutsByQuery(`
+		SELECT tx_hash, block_number, timestamp, dst_eid, payer, merchant, src_token, dst_token, gross_amount, net_amount, status, COALESCE(solana_merchant, ''), COALESCE(solana_payer, '')
+		FROM payouts
+		WHERE LOWER(merchant) = LOWER(?) OR LOWER(solana_merchant) = LOWER(?)
+		ORDER BY block_number DESC
+		LIMIT ? OFFSET ?
+	`, merchantLower, merchantLower, limit, offset)
 }
 
 // ListPendingPayouts 列出状态为 "Pending" 的 Payouts

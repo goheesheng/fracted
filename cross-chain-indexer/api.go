@@ -114,6 +114,8 @@ func authMiddleware(next http.Handler) http.Handler {
 		}
 		ctx := context.WithValue(r.Context(), ctxKeyMerchant, merchantAddr)
 		ctx = context.WithValue(ctx, ctxKeyRole, role)
+		// 保存原始地址字符串，用于查询
+		ctx = context.WithValue(ctx, "merchant_original", merchantStr)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }
@@ -134,6 +136,7 @@ func adminOnlyMiddleware(next http.Handler) http.Handler {
 type PayoutStore interface {
 	ListPayouts(limit, offset int) ([]PayoutRecord, error)
 	ListMerchantPayouts(merchant common.Address, limit, offset int) ([]PayoutRecord, error)
+	ListMerchantPayoutsByString(merchantAddr string, limit, offset int) ([]PayoutRecord, error)
 	GetAllEvents(limit, offset int) ([]RawEvent, error)
 	GetEventCount() (int, error)
 }
@@ -337,16 +340,18 @@ func convertPayoutToResponse(payout PayoutRecord) PayoutResponse {
 
 	// 根据链类型决定显示哪种地址格式
 	if isSolanaChain(payout.DstEid) && payout.SolanaMerchant != "" {
-		// Solana 链：只显示 Solana 地址，不重复显示 SolanaMerchant 字段
+		// Solana 目标链：Merchant 显示 Solana 地址
 		resp.Merchant = payout.SolanaMerchant
-		resp.Payer = payout.SolanaPayer
-		// 不设置 SolanaMerchant 和 SolanaPayer（避免重复）
+		// Payer 仍然是源链（EVM）地址
+		resp.Payer = payout.Payer.Hex()
+		// 如果需要也保存 Solana Payer（未来功能）
+		if payout.SolanaPayer != "" {
+			resp.SolanaPayer = payout.SolanaPayer
+		}
 	} else {
-		// EVM 链：显示 0x 地址
+		// EVM 链：全部显示 0x 地址
 		resp.Merchant = payout.Merchant.Hex()
 		resp.Payer = payout.Payer.Hex()
-		// 如果这是 EVM 链但有 Solana 字段（混合场景），可以保留
-		// 目前不需要，因为 omitempty 会自动忽略空字符串
 	}
 
 	return resp
@@ -503,11 +508,15 @@ func getAuthenticatedMerchantAddress(r *http.Request) (common.Address, error) {
 
 // handleListMerchantPayouts 处理 /merchant/payouts 请求，只返回与当前商家相关的交易数据
 func (s *Server) handleListMerchantPayouts(w http.ResponseWriter, r *http.Request) {
-	// 1. 【安全】获取当前请求的商家地址
-	merchantAddress, err := getAuthenticatedMerchantAddress(r)
-	if err != nil {
-		// 如果认证失败或找不到地址，返回 401 Unauthorized
+	// 1. 【安全】获取当前请求的商家地址（原始地址）
+	merchantOriginal := r.Context().Value("merchant_original")
+	if merchantOriginal == nil {
 		http.Error(w, "Authentication failed or merchant address missing", http.StatusUnauthorized)
+		return
+	}
+	merchantStr, ok := merchantOriginal.(string)
+	if !ok {
+		http.Error(w, "Invalid merchant address format", http.StatusUnauthorized)
 		return
 	}
 
@@ -520,8 +529,8 @@ func (s *Server) handleListMerchantPayouts(w http.ResponseWriter, r *http.Reques
 	offset, _ := strconv.Atoi(q.Get("offset"))
 
 	// 3. 调用 Store 层的新方法进行筛选
-	// 这是核心：传入 merchantAddress
-	list, err := s.store.ListMerchantPayouts(merchantAddress, limit, offset)
+	// 支持 Solana 地址查询
+	list, err := s.store.ListMerchantPayoutsByString(merchantStr, limit, offset)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

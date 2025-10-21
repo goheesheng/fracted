@@ -45,7 +45,11 @@ const (
 	solanaDevnetRPC = "https://api.devnet.solana.com"
 
 	// 【必填】Base Sepolia 合约地址（MyOApp）
-	oappContractAddress = "0xA1D91CdcBD933c3385D7dea34D87357f5E62f6d6"
+	// 旧合约地址（保留用于历史数据）
+	oappContractAddress = "0x6689F160b47CbfEBf389c55ae34959296Ef56B8D"
+
+	// 新的 Base Sepolia 合约地址（用于 Base -> Arb/Solana 跨链）
+	baseContractAddress = "0xA1D91CdcBD933c3385D7dea34D87357f5E62f6d6"
 
 	// Arbitrum Sepolia 合约地址（MyOApp）
 	arbContractAddress = "0x1a9C0a66Cb68D92c598B0D2f10de3C755Eb6D438"
@@ -280,18 +284,44 @@ func main() {
 	}
 	log.Println("main: HTTPS client ready")
 
-	// optional: arb client for delivery checks
-	// NOTE: 暂时不在 MVP 中使用 Arbitrum 客户端；如需启用请在此处初始化并确保后续代码使用该变量。
-	// 保留此注释以便未来扩展。
+	// 3) 初始化 Base Sepolia 监听器（新合约地址）
+	log.Println("main: Initializing Base Sepolia listener...")
+	baseListener, err := NewBaseListener(
+		baseSepoliaWSS,
+		baseSepoliaHTTPS,
+		baseContractAddress,
+		store,
+	)
+	if err != nil {
+		log.Printf("main: failed to create Base listener: %v", err)
+		baseListener = nil
+	} else {
+		log.Println("main: Base listener created successfully")
+	}
 
-	// 3) Processor
+	// 4) 初始化 Arbitrum 监听器
+	log.Println("main: Initializing Arbitrum listener...")
+	arbListener, err := NewArbitrumListener(
+		"wss://arbitrum-sepolia.publicnode.com",
+		arbSepoliaHTTPS,
+		arbContractAddress,
+		store,
+	)
+	if err != nil {
+		log.Printf("main: failed to create Arbitrum listener: %v", err)
+		arbListener = nil
+	} else {
+		log.Println("main: Arbitrum listener created successfully")
+	}
+
+	// 5) Processor
 	proc := NewProcessor(httpsClient, store)
 
-	// 4) Backfill once
+	// 6) Backfill Base Sepolia events once (旧合约地址，保留用于历史数据)
 	oappAddr := common.HexToAddress(oappContractAddress)
 	latestBlock := backfillHistoricalEvents(httpsClient, oappAddr, tokenPayoutRequestedTopic, proc)
 
-	// 5) Start WSS listener (if wss client created)
+	// 7) Start Base Sepolia WSS listener (if wss client created) - 旧合约
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	if wssClient != nil {
@@ -302,7 +332,23 @@ func main() {
 		mu.Unlock()
 	}
 
-	// 6) 初始化并启动 Solana 监听器
+	// 8) Start Base Sepolia listener (新合约) - if created successfully
+	if baseListener != nil {
+		log.Println("main: Starting Base Sepolia listener...")
+		if err := baseListener.Start(ctx); err != nil {
+			log.Printf("main: Base listener start error: %v", err)
+		}
+	}
+
+	// 9) Start Arbitrum listener (if created successfully)
+	if arbListener != nil {
+		log.Println("main: Starting Arbitrum listener...")
+		if err := arbListener.Start(ctx); err != nil {
+			log.Printf("main: Arbitrum listener start error: %v", err)
+		}
+	}
+
+	// 10) 初始化并启动 Solana 监听器
 	solanaListener, err := NewSolanaListener(solanaDevnetRPC, solanaProgramAddress, store)
 	if err != nil {
 		log.Printf("main: failed to create Solana listener: %v", err)
@@ -333,12 +379,12 @@ func main() {
 		}()
 	}
 
-	// 7) Start delivery worker (placeholder)
+	// 11) Start delivery worker (placeholder)
 	go trackDeliveryStatus(store)
 	// 启动状态更新器：每 15 秒检查一次 Pending（你可以根据需要调整间隔）
 	go statusUpdater(store, httpsClient, 15*time.Second)
 
-	// 8) Start API server (api.go must provide NewServer)
+	// 12) Start API server (api.go must provide NewServer)
 	server := NewServer(store, httpsClient, oappAddr, tokenPayoutRequestedTopic, proc)
 	go func() {
 		addr := ":8080"
@@ -348,7 +394,7 @@ func main() {
 		}
 	}()
 
-	// 9) Dashboard refresh loop
+	// 13) Dashboard refresh loop
 	ticker := time.NewTicker(5 * time.Second)
 	defer ticker.Stop()
 	for range ticker.C {

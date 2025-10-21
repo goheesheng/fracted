@@ -42,7 +42,11 @@
   function getSearchFiltered(list) {
     const q = (el.searchInput && el.searchInput.value || '').trim().toLowerCase();
     if (!q) return list;
-    return list.filter(tx => String(tx.Merchant || '').toLowerCase().includes(q));
+    return list.filter(tx => {
+      // 优先搜索 Solana 地址，如果没有则搜索 EVM 地址
+      const merchantAddr = tx.SolanaMerchant || tx.Merchant || '';
+      return String(merchantAddr).toLowerCase().includes(q);
+    });
   }
 
   function hueFromString(str) {
@@ -243,13 +247,14 @@
     // Base mainnet
     '0x833589fcd6edb6e08f4c7c32d4f71b54b7cfb66e': { symbol: 'USDC', chain: 'Base' },
     '0xd9aaec6eab5f9f0a7f0dd7c39c3f1b3aa1c5f6b9': { symbol: 'USDbC', chain: 'Base' },
-    // Base Sepolia
+    // Base Sepolia - 添加更多已知的代币地址
     '0x75faf114eafb1bdbe2f0316df893fd58ce46aa4d': { symbol: 'USDC', chain: 'Base Sepolia' },
     '0x036cbd53842c5426634e7929541ec2318f3dcf7e': { symbol: 'USDC', chain: 'Base Sepolia' },
     '0x323e78f944a9a1fcf3a10efcc5319dbb0bb6e673': { symbol: 'USDT', chain: 'Base Sepolia' },
     // Arbitrum Sepolia (common test tokens; adjust if needed)
-    '0x9aa7fEc87CA69695Dd1f879567CcF49F3ba417E2': { symbol: 'USDT', chain: 'Arb Sepolia' },
+    '0x9aa7fec87ca69695dd1f879567ccf49f3ba417e2': { symbol: 'USDT', chain: 'Arb Sepolia' },
     '0x0f3a3d8e7c8b1e3b5f0b3d3c1a9f4f0a9e3b1c2d': { symbol: 'USDC', chain: 'Arb Sepolia' },
+    '0x4dad09303a773353908f17254b276ee2bd51f0ef': { symbol: 'USDT', chain: 'Arb Sepolia' },
     // Solana Devnet - Common test tokens (更新实际地址后可识别)
     // USDC Devnet: https://explorer.solana.com/address/Gh9ZwEmdLJ8DscKNTkTqPbNwLNNBjuSzaG9Vp2KGtKJr?cluster=devnet
     'gh9zwemldj8dsckntktqpbnwlnnbjuszag9vp2kgtkjr': { symbol: 'USDC', chain: 'Solana Devnet' },
@@ -271,13 +276,31 @@
     }
   }
 
-  function getTokenInfo(addr, dstChain) {
+  function getTokenInfo(addr, dstChain, srcToken) {
     if (!addr) return null;
     const k = String(addr).toLowerCase();
     
     // 先查找精确匹配
     if (TOKEN_MAP[k]) {
       return TOKEN_MAP[k];
+    }
+    
+    // 如果 addr 是零地址，从 srcToken 推断
+    if (k === '0x0000000000000000000000000000000000000000') {
+      // 零地址表示目标链是原生代币或跨链映射
+      if (srcToken) {
+        const srcInfo = TOKEN_MAP[String(srcToken).toLowerCase()];
+        if (srcInfo) {
+          // 返回源代币的符号，但更新链名为目标链
+          return { symbol: srcInfo.symbol, chain: dstChain || srcInfo.chain };
+        }
+      }
+      // 如果目标链是 Solana，默认返回 USDC
+      if (dstChain && dstChain.includes('Solana')) {
+        return { symbol: 'USDC', chain: dstChain };
+      }
+      // 其他情况，默认返回 USDT
+      return { symbol: 'USDT', chain: dstChain || 'Unknown' };
     }
     
     // 如果是 Solana 地址格式（不是 0x 开头），根据目标链推断
@@ -287,9 +310,17 @@
         // 根据地址特征或长度推断 token 类型
         // Solana 地址通常是 32-44 字符的 base58 编码
         if (addr.length >= 32) {
-          // 默认显示为 USDC/USDT（可以根据实际情况调整）
+          // 默认显示为 USDC（可以根据实际情况调整）
           return { symbol: 'USDC', chain: dstChain };
         }
+      }
+    }
+    
+    // 如果无法识别，但有 srcToken，尝试从 srcToken 推断
+    if (srcToken && srcToken !== addr) {
+      const srcInfo = getTokenInfo(srcToken, dstChain, null);
+      if (srcInfo) {
+        return { symbol: srcInfo.symbol, chain: dstChain || srcInfo.chain };
       }
     }
     
@@ -299,14 +330,42 @@
   function timeAgo(iso) {
     const t = Date.parse(iso);
     if (isNaN(t)) return '-';
-    const s = Math.floor((Date.now() - t) / 1000);
+    
+    // 计算时间差（秒）
+    const diffSeconds = Math.floor((Date.now() - t) / 1000);
+    
+    // 如果时间差为负数或异常大（超过1年），显示完整时间
+    if (diffSeconds < 0 || diffSeconds > 31536000) {
+      const date = new Date(t);
+      // 转换为新加坡时间 (UTC+8)
+      const sgTime = new Date(date.getTime() + (8 * 60 * 60 * 1000));
+      return sgTime.toLocaleString('en-SG', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: false 
+      });
+    }
+    
+    const s = diffSeconds;
     if (s < 60) return `${s}s ago`;
     const m = Math.floor(s / 60);
     if (m < 60) return `${m}m ago`;
     const h = Math.floor(m / 60);
     if (h < 24) return `${h}h ago`;
     const d = Math.floor(h / 24);
-    return `${d} days ago`;
+    if (d < 7) return `${d}d ago`;
+    
+    // 超过7天，显示完整日期（新加坡时间）
+    const date = new Date(t);
+    const sgTime = new Date(date.getTime() + (8 * 60 * 60 * 1000));
+    return sgTime.toLocaleDateString('en-SG', { 
+      year: 'numeric', 
+      month: 'short', 
+      day: 'numeric' 
+    });
   }
 
   function renderOngoing(list) {
@@ -335,8 +394,35 @@
       const dstChain = tx.DstChain || getChainNameByEid(tx.DstEid);
       
       // 优先检查 SrcToken（源链代币），传入目标链信息以便智能推断
-      const token = getTokenInfo(tx.SrcToken, dstChain) || getTokenInfo(tx.DstToken, dstChain);
-      const tokensHTML = token ? `<div class="tokens">${tokenPillHTML(token.symbol, token.chain)}</div>` : `<span class="badge badge-default">N/A</span>`;
+      let token = getTokenInfo(tx.SrcToken, dstChain, tx.DstToken);
+      
+      // 如果没有找到，尝试从 DstToken 查找
+      if (!token) {
+        token = getTokenInfo(tx.DstToken, dstChain, tx.SrcToken);
+      }
+      
+      // 如果仍然没有找到，使用智能默认值
+      if (!token) {
+        // 根据目标链推断默认token
+        if (dstChain.includes('Solana')) {
+          token = { symbol: 'USDC', chain: dstChain };
+        } else if (dstChain.includes('Arbitrum')) {
+          token = { symbol: 'USDT', chain: dstChain };
+        } else {
+          token = { symbol: 'USDC', chain: dstChain };
+        }
+        
+        // 调试信息：记录使用默认值的情况
+        console.log('[INFO] Using default token for tx:', {
+          txHash: tx.TxHash,
+          srcToken: tx.SrcToken,
+          dstToken: tx.DstToken,
+          dstChain: dstChain,
+          defaultToken: token.symbol
+        });
+      }
+      
+      const tokensHTML = `<div class="tokens">${tokenPillHTML(token.symbol, token.chain)}</div>`;
       
       // Solana 交易显示绿色标签
       const dstChainBadge = dstChain.includes('Solana') 
@@ -346,11 +432,14 @@
       // 使用 USD 格式化后的值
       const netAmountUSD = tx.NetAmountUSD || '0.00';
       const activity = `<span class="icon inflow"></span>Sent $${netAmountUSD} ${token ? token.symbol : ''} to ${dstChain}`;
-      const hue = hueFromString(String(tx.Merchant || ''));
+      
+      // 优先显示 Solana 地址（如果目标链是 Solana）
+      const merchantAddr = tx.SolanaMerchant || tx.Merchant || '';
+      const hue = hueFromString(String(merchantAddr));
       const row = document.createElement('div');
       row.className = 'tx-row';
       row.innerHTML = `
-        <div class="tx-cell" title="${tx.Merchant}"><span class="avatar" style="--h:${hue}"></span><span class="mono">${short(tx.Merchant)}</span></div>
+        <div class="tx-cell" title="${merchantAddr}"><span class="avatar" style="--h:${hue}"></span><span class="mono">${short(merchantAddr)}</span></div>
         <div class="tx-cell" title="${tx.Timestamp}">${timeAgo(tx.Timestamp)}</div>
         <div class="tx-cell">$${netAmountUSD}</div>
         <div class="tx-cell">${dstChainBadge}</div>
