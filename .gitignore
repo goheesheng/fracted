@@ -4,5 +4,5 @@ artifacts
 typechain
 .env
 deployments
-
+payments.db
 
