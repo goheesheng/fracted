@@ -373,8 +373,6 @@ contract MyOApp is OApp, OAppOptionsType3 {
             }
         }
 
-        // Native payout path removed: contract does not process native payouts
-
         // Legacy example: treat as string message
         string memory _string = abi.decode(_message, (string));
         lastMessage = _string;

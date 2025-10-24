@@ -1,6 +1,6 @@
 import { AnchorProvider, Program, web3 } from "@coral-xyz/anchor";
 import { PublicKey } from "@solana/web3.js";
-import { MyOapp } from "../target/types/my_oapp";
+import { MyOapp } from "../../target/types/my_oapp";
 
 /**
  * Relay a string message to another chain

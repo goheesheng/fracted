@@ -15,12 +15,6 @@ import { HardhatUserConfig, HttpNetworkAccountsUserConfig } from 'hardhat/types'
 
 import { EndpointId } from '@layerzerolabs/lz-definitions'
 
-import './tasks/setPermit2'
-import './tasks/depositToken'
-import './tasks/approveToken'
-import './tasks/approvePermit2'
-import './tasks/requestPayoutToken'
-import './tasks/requestPayoutTokenWithPermit2'
 import './tasks/index'
 
 // Set your preferred authentication method
